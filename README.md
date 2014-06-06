@@ -10,6 +10,15 @@ TODO
 
 TODO
 
+## Testing
+
+You can run all tests in the repl with
+
+```clojure
+user=> (require '[views.all-tests :as at])
+user=> (at/run-all-tests)
+```
+
 ## License
 
 Copyright © 2014 DiligenceEngine

@@ -10,7 +10,7 @@
    [honeysql.types :as ht]
    [clojure.java.jdbc :as j]
    [clojure.tools.logging :refer [debug]]
-   [views.honeysql :as vh]
+   [views.db.honeysql :as vh]
    [views.subscribed-views :refer [subscribed-views broadcast-deltas]]))
 
 (defn get-primary-key

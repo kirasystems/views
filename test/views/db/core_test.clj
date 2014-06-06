@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is run-tests]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
-   [views.db :as vdb]))
+   [views.db.core :as vdb]))
 
 (defn join-test-template
   [id val3]
