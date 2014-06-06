@@ -52,3 +52,17 @@
   (dotimes [n n]
     (user-fixture! (dg/string #(rand-nth (seq "abcdefghijklmnopqrstuwvxyz")))))
   (j/query db ["SELECT * FROM users"]))
+
+(defn users-tmpl
+  []
+  (hsql/build :select [:id :name :created_on] :from :users))
+
+(defn user-posts-tmpl
+  [user_id]
+  (hsql/build :select [:u.user_id :u.name :p.title :p.body :p.created_on]
+              :from {:posts :p}
+              :join [[:users :u][:= :user_id user_id]]))
+
+(def templates
+  {:users      {:fn #'users-tmpl}
+   :user-posts {:fn #'user-posts-tmpl}})

@@ -2,25 +2,11 @@
   (:require
    [clojure.test :refer [use-fixtures deftest is]]
    [honeysql.core :as hsql]
-   [views.fixtures :as vf :refer [gen-n-users! database-fixtures!]]
+   [views.fixtures :as vf :refer [gen-n-users! database-fixtures! templates]]
    [views.db.core :as vdb]
    [clojure.string :refer [upper-case]]))
 
 (use-fixtures :each database-fixtures!)
-
-(defn users-tmpl
-  []
-  (hsql/build :select [:id :name :created_on] :from :users))
-
-(defn user-posts-tmpl
-  [user_id]
-  (hsql/build :select [:u.user_id :u.name :p.title :p.body :p.created_on]
-              :from {:posts :p}
-              :join [[:users :u][:= :user_id user_id]]))
-
-(def templates
-  {:users      {:fn #'users-tmpl}
-   :user-posts {:fn #'user-posts-tmpl}})
 
 (defn subscribed-views
   []

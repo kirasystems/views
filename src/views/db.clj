@@ -11,7 +11,7 @@
    [clojure.java.jdbc :as j]
    [clojure.tools.logging :refer [debug]]
    [views.honeysql :as vh]
-   [views.subscribed-views :refer [get-subscribed-views broadcast-deltas]]))
+   [views.subscribed-views :refer [subscribed-views broadcast-deltas]]))
 
 (defn get-primary-key
   "Get a primary key for a table."
@@ -468,7 +468,7 @@
        calculate for them and associated with the hash-maps (appropriately
        called views-with-deltas)."
   [schema db action-map subscribed-views]
-  (let [subbed-views   (get-subscribed-views subscribed-views db)
+  (let [subbed-views   (subscribed-views subscribed-views db)
         transaction-fn #(do-view-transaction schema db subbed-views action-map)]
     (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
       (let [{:keys [views-with-deltas result-set]} (transaction-fn)]
