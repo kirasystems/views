@@ -1,6 +1,6 @@
 (ns views.subscriptions
   (:require
-   [views.db :as vdb]))
+   [views.db.core :as vdb]))
 
 ;;
 ;; {[:view-sig 1 "arg2"] {:keys [1 2 3 4 ... ] :view-map {:view ...}}}
