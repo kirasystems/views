@@ -1,7 +1,6 @@
 (ns views.db.core-test
   (:require
    [clojure.test :refer [deftest is run-tests]]
-   [edl.core :refer [defschema]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
    [views.fixtures :as vf]
@@ -79,7 +78,7 @@
   (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})]
     (is (:bulk-update? (vdb/view-map tmpl [:users])))))
 
-(defschema schema vf/db "public")
+;; (defschema schema vf/db "public")
 
 ;; (deftest sends-entire-view-on-every-update-with-bulk-update
 ;;   (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})

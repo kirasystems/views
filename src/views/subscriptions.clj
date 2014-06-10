@@ -18,23 +18,23 @@
       #{subscriber-key})))
 
 (defn add-subscription*
-  [subscriber-key view-sig templates namespace]
+  [view-sig templates subscriber-key namespace]
   (fn [svs]
     (-> svs
         (update-in [namespace view-sig :subscriptions] (add-subscriber-key subscriber-key))
         (assoc-in  [namespace view-sig :view-data]     (vdb/view-map (get-in templates [(first view-sig) :fn]) view-sig)))))
 
 (defn add-subscription!
-  ([subscriber-key view-sig templates]
-     (add-subscription! subscriber-key view-sig templates default-ns))
-  ([subscriber-key view-sig templates namespace]
-     (swap! subscribed-views (add-subscription* subscriber-key view-sig templates namespace))))
+  ([view-sig templates subscriber-key]
+     (add-subscription! view-sig templates subscriber-key default-ns))
+  ([view-sig templates subscriber-key namespace]
+     (swap! subscribed-views (add-subscription* view-sig templates subscriber-key namespace))))
 
 (defn add-subscriptions!
-  ([subscriber-key view-sigs templates]
-     (add-subscriptions! subscriber-key view-sigs templates default-ns))
-  ([subscriber-key view-sigs templates namespace]
-     (mapv #(add-subscription! subscriber-key % templates namespace) view-sigs)))
+  ([view-sigs templates subscriber-key]
+     (add-subscriptions! view-sigs templates subscriber-key default-ns))
+  ([view-sigs templates subscriber-key namespace]
+     (mapv #(add-subscription! % templates subscriber-key namespace) view-sigs)))
 
 (defn subscriptions-for
   ([subscriber-key] (subscriptions-for subscriber-key default-ns))
@@ -51,14 +51,14 @@
      (get-in @subscribed-views [namespace view-sig :subscriptions])))
 
 (defn subscribed-to?
-  ([subscriber-key view-sig]
-     (subscribed-to? subscriber-key view-sig default-ns))
-  ([subscriber-key view-sig namespace]
+  ([view-sig subscriber-key]
+     (subscribed-to? view-sig subscriber-key default-ns))
+  ([view-sig subscriber-key namespace]
      (if-let [view-subs (subscribed-to view-sig namespace)]
        (view-subs subscriber-key))))
 
 (defn- remove-key-or-view
-  [subscriber-key view-sig namespace]
+  [view-sig subscriber-key namespace]
   (fn [subbed-views]
     (let [path    [namespace view-sig :subscriptions]
           updated (update-in subbed-views path disj subscriber-key)]
@@ -67,11 +67,11 @@
         (update-in updated [namespace] dissoc view-sig)))))
 
 (defn remove-subscription!
-  ([subscriber-key view-sig]
-     (remove-subscription! subscriber-key view-sig default-ns))
-  ([subscriber-key view-sig namespace]
-     (when (subscribed-to? subscriber-key view-sig namespace)
-       (swap! subscribed-views (remove-key-or-view subscriber-key view-sig namespace)))))
+  ([view-sig subscriber-key]
+     (remove-subscription! view-sig subscriber-key default-ns))
+  ([view-sig subscriber-key namespace]
+     (when (subscribed-to? view-sig subscriber-key namespace)
+       (swap! subscribed-views (remove-key-or-view view-sig subscriber-key namespace)))))
 
 (defn compiled-view-for
   ([view-sig] (compiled-view-for view-sig default-ns))

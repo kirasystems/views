@@ -1,16 +1,11 @@
 (ns views.base-subscribed-views
   (:require
-   [views.persistor :refer [subscribe-to-view]]
+   [views.persistor :refer [subscribe-to-view! unsubscribe-from-view! unsubscribe-from-all-views!]]
    [views.subscribed-views :refer [SubscribedViews]]
-   [views.subscriptions :as vs :refer [add-subscriptions! remove-subscription! subscriptions-for]]
+   [views.subscriptions :refer [default-ns]]
    [views.filters :refer [view-filter]]
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.core.async :refer [put! <! go thread]]))
-
-(defmacro config
-  [{:keys [db schema templates send-fn subscriber-fn namespace-fn unsafe?]}]
-  `(do (defschema schema db "public")
-       {:db db :schema schema :subscribed-views (BaseSubscribedViews. db templates send-fn subscriber-fn namespace-fn unsafe?)}))
 
 (defn send-fn*
   [send-fn address msg]
@@ -24,7 +19,7 @@
 
 (defn namespace-fn*
   [namespace-fn msg]
-  (if namespace-fn (namespace-fn msg) vs/default-ns))
+  (if namespace-fn (namespace-fn msg) default-ns))
 
 (deftype BaseSubscribedViews [opts]
   SubscribedViews
@@ -38,27 +33,26 @@
           popts          {:templates templates :subscriber-key subscriber-key :namespace namespace}]
       (info "Subscribing views: " view-sigs " for subscriber " subscriber-key ", in namespace " namespace)
       (when (seq view-sigs)
-;;        (thread
+        (thread
           (doseq [vs view-sigs]
-            (send-fn* send-fn subscriber-key (subscribe-to-view persistor db vs popts))))))
+            (send-fn* send-fn subscriber-key (subscribe-to-view! persistor db vs popts)))))))
 
   (unsubscribe-views
     [this msg]
-    (let [{:keys [subscriber-key-fn namespace-fn]} opts
+    (let [{:keys [subscriber-key-fn namespace-fn persistor]} opts
           subscriber-key (subscriber-key-fn* subscriber-key-fn msg)
           namespace      (namespace-fn* namespace-fn msg)
           view-sigs      (:views msg)]
       (info "Unsubscribing views: " view-sigs " for subscriber " subscriber-key)
-      (doseq [vs view-sigs] (remove-subscription! subscriber-key vs namespace))))
+      (doseq [vs view-sigs] (unsubscribe-from-view! persistor vs subscriber-key namespace))))
 
   (disconnect [this msg]
-    (let [{:keys [subscriber-key-fn namespace-fn]} opts
+    (let [{:keys [subscriber-key-fn namespace-fn persistor]} opts
           subscriber-key (subscriber-key-fn* subscriber-key-fn msg)
-          namespace      (namespace-fn* namespace-fn msg)
-          view-sigs      (if namespace (subscriptions-for subscriber-key namespace) (subscriptions-for subscriber-key))]
-      (doseq [vs view-sigs] (remove-subscription! subscriber-key vs namespace))))
+          namespace      (namespace-fn* namespace-fn msg)]
+      (unsubscribe-from-all-views! persistor subscriber-key namespace)))
 
   ;; DB interaction
-  (subscribed-views [this] ) ;; (vs/compiled-views))
+  (subscribed-views [this])
 
   (broadcast-deltas [this fdb views-with-deltas]))
