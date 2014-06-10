@@ -72,6 +72,7 @@
     (merge {:args          (rest view-sig)
             :view-sig      view-sig
             :view          compiled-view
+            :bulk-update?  (:bulk-update? (meta view-template))
             :tables        (set (vh/extract-tables compiled-view))}
            (compile-dummy-view view-template (rest view-sig)))))
 
@@ -444,7 +445,7 @@
                (broadcast-deltas ~subscribed-views ~(second binding) @deltas#)
                result#))))))
 
-(defn vaction!
+(defn vexec!
   "Used to perform arbitrary insert/update/delete actions on the database,
    while ensuring that view deltas are appropriately checked and calculated
    for the currently registered views as reported by a type implementing

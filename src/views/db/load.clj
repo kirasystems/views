@@ -23,7 +23,7 @@
   (reduce
    (fn [results nv]
      (->> (get subscribed-views nv)
-          :view-map
+          :view
           (view-query db)
           (into [])
           (post-process-result-set nv templates)

@@ -1,9 +1,14 @@
 (ns views.db.core-test
   (:require
    [clojure.test :refer [deftest is run-tests]]
+   [edl.core :refer [defschema]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
-   [views.db.core :as vdb]))
+   [views.fixtures :as vf]
+   [views.db.core :as vdb]
+   [views.base-subscribed-views :as bsv])
+  (:import
+   [views.base_subscribed_views BaseSubscribedViews]))
 
 (defn join-test-template
   [id val3]
@@ -53,14 +58,6 @@
     (is (= (hsql/format check-template)
            ["SELECT f.id, f.val3 FROM foo f INNER JOIN bar b ON b.id = f.b_id LEFT JOIN baz ba ON ba.id = b.ba_id RIGHT JOIN qux q ON q.id = ba.q_id WHERE (b.id = 123 AND f.val2 = ?)" "constant"]))))
 
-;; ;; Not meaningful at this point perhaps...view-check-template shouldn't
-;; ;; get handed an action that doesn't have a related table in the first place...?
-;; (deftest removes-non-related-tables
-;;   (let [update-bar (update-bar-template "foo" [:= :id 123])
-;;         vm         (vdb/view-map no-where-view-template [:no-where])
-;;         check-template (:view-check (vdb/view-check-template vm update-bar))]
-;;     (is (nil? check-template))))
-
 (deftest creates-collection-of-views-to-check
   (let [views         [(vdb/view-map no-where-view-template [:no-where])      ; no :bar
                        (vdb/view-map no-where-view-template [:no-where])      ; no :bar
@@ -75,4 +72,17 @@
     ;; and 1 for *both* the joint-test-templates.
     (is (= (count checked-views) 2))))
 
+;; What is this for?
 (def left-join-example (hsql/build :select [:R.a :S.C] :from :R :left-join [:S [:= :R.B :S.B]] :where [:!= :S.C 20]))
+
+(deftest notes-view-map-as-no-delta-calc
+  (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})]
+    (is (:bulk-update? (vdb/view-map tmpl [:users])))))
+
+(defschema schema vf/db "public")
+
+;; (deftest sends-entire-view-on-every-update-with-bulk-update
+;;   (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})
+;;         vm   (vdb/view-map tmpl [:users])
+;;         bsv  (BaseSubscribedViews. vf/db 
+

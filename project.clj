@@ -11,7 +11,9 @@
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [org.clojure/java.jdbc "0.3.3"]
                  [honeysql "0.4.3"]
-                 [org.postgresql/postgresql "9.2-1003-jdbc4"]]
+                 [edl "0.1.0"]
+                 [org.postgresql/postgresql "9.2-1003-jdbc4"]
+                 [clj-logging-config "1.9.10"]]
 
   :profiles {:test {:dependencies [[org.clojure/tools.nrepl "0.2.3"]
                                    [environ "0.4.0"]

@@ -12,7 +12,20 @@ TODO
 
 ## Testing
 
-You can run all tests in the repl with
+You will need to set up the test db to run the tests:
+
+```bash
+$ psql -Upostgres < test/views/test_db.sql
+CREATE ROLE
+CREATE DATABASE
+$
+```
+
+This will create a role `views_user` and a database owned by that user called `views_test`.
+
+(You can change the database settings if you'd like by editing that file and checking the config in `test/views/fixtures.clj`.)
+
+Then, to run all tests in the repl:
 
 ```clojure
 user=> (require '[views.all-tests :as at])

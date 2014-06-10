@@ -10,7 +10,7 @@
 
 (defn subscribed-views
   []
-  {[:users] {:view-map ((get-in templates [:users :fn]))}})
+  {[:users] {:view ((get-in templates [:users :fn]))}})
 
 (deftest initializes-views
   (let [users (gen-n-users! 2)]

@@ -36,10 +36,17 @@
   ([subscriber-key view-sigs templates]
      (add-subscriptions! subscriber-key view-sigs templates nil))
   ([subscriber-key view-sigs templates prefix]
-     (doseq [vs view-sigs]
-       (if prefix
-         (add-subscription! subscriber-key vs templates prefix)
-         (add-subscription! subscriber-key vs templates)))))
+     (last (mapv
+            #(if prefix
+               (add-subscription! subscriber-key % templates prefix)
+               (add-subscription! subscriber-key % templates))
+            view-sigs))))
+
+(defn subscriptions-for
+  ([subscriber-key]
+     (reduce #(if (contains? (second %2) subscriber-key) (conj %1 (first %2)) %1) [] @subscribed-views))
+  ([subscriber-key prefix]
+     (reduce #(if (contains? (second %2) subscriber-key) (conj %1 (first %2)) %1) [] (get @subscribed-views prefix))))
 
 (defn subscribed-to
   ([view-sig]

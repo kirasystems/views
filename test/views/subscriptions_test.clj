@@ -64,3 +64,13 @@
     (vs/add-subscription! key view-sig templates)
     (vs/remove-subscription! key view-sig)
     (is (nil? (vs/compiled-view-for [:user-posts 1])))))
+
+(deftest retrieves-subscriptions-for-subscriber
+  (let [key 1, view-sigs [[:users][:user-posts 1]]]
+    (vs/add-subscriptions! key view-sigs templates)
+    (is (= (set (vs/subscriptions-for 1)) (set view-sigs)))))
+
+(deftest retrieves-subscriptions-for-subscriber-with-prefix
+  (let [key 1, view-sigs [[:users][:user-posts 1]] prefix 1]
+    (vs/add-subscriptions! key view-sigs templates prefix)
+    (is (= (set (vs/subscriptions-for 1 prefix)) (set view-sigs)))))

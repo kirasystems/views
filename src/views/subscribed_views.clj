@@ -5,7 +5,6 @@
   (subscribe-views [this sub-request])
   (unsubscribe-views [this unsub-request])
   (disconnect [this disconnect-request])
-  (send-message [this address msg])
   (subscriber-key-fn [this msg])
   (prefix-fn [this msg])
 
