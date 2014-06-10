@@ -449,7 +449,7 @@
   "Used to perform arbitrary insert/update/delete actions on the database,
    while ensuring that view deltas are appropriately checked and calculated
    for the currently registered views as reported by a type implementing
-   the SubscribedViews protocol.
+   the ISubscribedViews protocol.
 
    Arguments are:
 
@@ -459,22 +459,24 @@
 
    - action-map: the HoneySQL map for the insert/update/delete action
 
-   - subscribed-views: an implementation of SubscribedViews implementing
+   - subscribed-views: an implementation of ISubscribedViews implementing
                        the follow functions:
 
-     - get-subscribed-views takes a database connection. It should return
+     - subscribed-views takes a ... . It should return
        a collection of view-maps.
 
-     - send-deltas takes a db connection, and the views which have had deltas
+     - broadcast-deltas takes a db connection, and the views which have had deltas
        calculate for them and associated with the hash-maps (appropriately
        called views-with-deltas)."
-  [schema db action-map subscribed-views]
-  (let [subbed-views   (subscribed-views subscribed-views db)
-        transaction-fn #(do-view-transaction schema db subbed-views action-map)]
-    (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
-      (let [{:keys [views-with-deltas result-set]} (transaction-fn)]
-        (swap! deltas into views-with-deltas)
-        result-set)
-      (let [{:keys [views-with-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
-        (broadcast-deltas subscribed-views db views-with-deltas)
-        result-set))))
+  ([action-map opts]
+     (vexec! (:db opts) action-map opts))
+  ([db action-map {:keys [schema base-subscribed-views]}]
+     (let [subbed-views   (subscribed-views base-subscribed-views db)
+           transaction-fn #(do-view-transaction schema db subbed-views action-map)]
+       (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
+         (let [{:keys [views-with-deltas result-set]} (transaction-fn)]
+           (swap! deltas into views-with-deltas)
+           result-set)
+         (let [{:keys [views-with-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
+           (broadcast-deltas base-subscribed-views db views-with-deltas)
+           result-set)))))

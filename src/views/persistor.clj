@@ -1,13 +1,14 @@
 (ns views.persistor
   (:require
    [clojure.java.jdbc :as j]
-   [views.subscriptions :refer [add-subscription! remove-subscription! compiled-view-for subscriptions-for]]
+   [views.subscriptions :refer [add-subscription! remove-subscription! compiled-view-for compiled-views-for subscriptions-for]]
    [views.db.load :refer [initial-view]]))
 
 (defprotocol IPersistor
   (subscribe-to-view! [this db view-sig opts])
   (unsubscribe-from-view! [this view-sig subscriber-key namespace])
-  (unsubscribe-from-all-views! [this subscriber-key namespace]))
+  (unsubscribe-from-all-views! [this subscriber-key namespace])
+  (get-subscribed-views [this namespace]))
 
 (deftype InMemoryPersistor []
   IPersistor
@@ -24,4 +25,6 @@
   (unsubscribe-from-all-views!
     [this subscriber-key namespace]
     (doseq [vs (subscriptions-for subscriber-key namespace)]
-      (remove-subscription! vs subscriber-key namespace))))
+      (remove-subscription! vs subscriber-key namespace)))
+
+  (get-subscribed-views [this namespace] (compiled-views-for namespace)))

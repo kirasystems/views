@@ -2,7 +2,7 @@
   (:require
    [views.base-subscribed-views :as bsv] ; :refer [BaseSubscribedViews]]
    [views.persistor];; :refer [InMemoryPersistor]]
-   [views.subscribed-views :refer [SubscribedViews subscribe-views unsubscribe-views disconnect]]
+   [views.subscribed-views :refer [subscribe-views unsubscribe-views disconnect]]
    [views.subscriptions :as vs :refer [subscribed-to?]]
    [views.fixtures :as vf]
    [clojure.test :refer [use-fixtures deftest is]]

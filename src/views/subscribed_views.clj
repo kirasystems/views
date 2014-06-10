@@ -1,6 +1,6 @@
 (ns views.subscribed-views)
 
-(defprotocol SubscribedViews
+(defprotocol ISubscribedViews
   ;; Subscription and Delta routing
   (subscribe-views [this sub-request])
   (unsubscribe-views [this unsub-request])
@@ -8,4 +8,4 @@
 
   ;; DB interaction
   (broadcast-deltas [this db views-with-deltas])
-  (subscribed-views [this]))
+  (subscribed-views [this args]))

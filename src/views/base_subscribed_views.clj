@@ -1,7 +1,7 @@
 (ns views.base-subscribed-views
   (:require
-   [views.persistor :refer [subscribe-to-view! unsubscribe-from-view! unsubscribe-from-all-views!]]
-   [views.subscribed-views :refer [SubscribedViews]]
+   [views.persistor :refer [subscribe-to-view! unsubscribe-from-view! unsubscribe-from-all-views! get-subscribed-views]]
+   [views.subscribed-views :refer [ISubscribedViews]]
    [views.subscriptions :refer [default-ns]]
    [views.filters :refer [view-filter]]
    [clojure.tools.logging :refer [debug info warn error]]
@@ -22,7 +22,7 @@
   (if namespace-fn (namespace-fn msg) default-ns))
 
 (deftype BaseSubscribedViews [opts]
-  SubscribedViews
+  ISubscribedViews
   (subscribe-views
     [this {db :db :as msg}]
     (let [{:keys [persistor templates send-fn subscriber-key-fn namespace-fn unsafe?]} opts
@@ -34,6 +34,7 @@
       (info "Subscribing views: " view-sigs " for subscriber " subscriber-key ", in namespace " namespace)
       (when (seq view-sigs)
         (thread
+          (println "WTF")
           (doseq [vs view-sigs]
             (send-fn* send-fn subscriber-key (subscribe-to-view! persistor db vs popts)))))))
 
@@ -52,7 +53,8 @@
           namespace      (namespace-fn* namespace-fn msg)]
       (unsubscribe-from-all-views! persistor subscriber-key namespace)))
 
-  ;; DB interaction
-  (subscribed-views [this])
+  (subscribed-views [this args]
+    (get-subscribed-views (:persistor opts) (namespace-fn* (:namespace-fn opts) args)))
 
-  (broadcast-deltas [this fdb views-with-deltas]))
+  (broadcast-deltas [this fdb views-with-deltas]
+    (println "broadcasting 1 2 3")))
