@@ -45,7 +45,7 @@
   (let [key 1, view-sig [:user-posts 1]]
     (vs/add-subscription! key view-sig templates)
     (vs/remove-subscription! key view-sig)
-    (is (= {:default-ns {}} @vs/subscribed-views))))
+    (is (= {vs/default-ns {}} @vs/subscribed-views))))
 
 (deftest adds-multiple-views-at-a-time
   (let [key 1, view-sigs [[:user-posts 1] [:user-posts 2]]]

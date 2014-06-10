@@ -14,12 +14,12 @@
 
 (deftest initializes-views
   (let [users (gen-n-users! 2)]
-    (is (= (vload/initial-views vf/db [[:users]] templates (subscribed-views))
+    (is (= (vload/initial-view vf/db [:users] templates (get-in (subscribed-views) [[:users] :view]))
            {[:users] users}))))
 
 (deftest post-processes-views
   (let [users       (gen-n-users! 1)
         with-postfn (assoc-in templates [:users :post-fn] #(update-in % [:name] upper-case))
-        views-rs    (vload/initial-views vf/db [[:users]] with-postfn (subscribed-views))]
+        views-rs    (vload/initial-view vf/db [:users] with-postfn (get-in (subscribed-views) [[:users] :view]))]
     (is (= (-> (get views-rs [:users]) first :name)
            (-> users first :name upper-case)))))
