@@ -7,11 +7,13 @@
 ;;
 ;;  or
 ;;
-;; {prefix {[:view-sig 1 "arg2"] {:keys [1 2 3 4 ... ] :view-map {:view ...}}}}
+;; {namespace {[:view-sig 1 "arg2"] {:keys [1 2 3 4 ... ] :view-map {:view ...}}}}
 ;;
 
 (def subscribed-views (atom {}))
 (def compiled-views (atom {}))
+
+(def default-ns :default-ns)
 
 (defn- add-subscriber-key
   [subscriber-key]
@@ -26,59 +28,50 @@
 
 (defn add-subscription!
   ([subscriber-key view-sig templates]
-     (swap! subscribed-views #(update-in % [view-sig] (add-subscriber-key subscriber-key)))
-     (add-compiled-view! view-sig templates))
-  ([subscriber-key view-sig templates prefix]
-     (swap! subscribed-views #(update-in % [prefix view-sig] (add-subscriber-key subscriber-key)))
+     (add-subscription! subscriber-key view-sig templates default-ns))
+  ([subscriber-key view-sig templates namespace]
+     (swap! subscribed-views #(update-in % [namespace view-sig] (add-subscriber-key subscriber-key)))
      (add-compiled-view! view-sig templates)))
 
 (defn add-subscriptions!
   ([subscriber-key view-sigs templates]
-     (add-subscriptions! subscriber-key view-sigs templates nil))
-  ([subscriber-key view-sigs templates prefix]
-     (last (mapv
-            #(if prefix
-               (add-subscription! subscriber-key % templates prefix)
-               (add-subscription! subscriber-key % templates))
-            view-sigs))))
+     (add-subscriptions! subscriber-key view-sigs templates default-ns))
+  ([subscriber-key view-sigs templates namespace]
+     (last (mapv #(add-subscription! subscriber-key % templates namespace) view-sigs))))
 
 (defn subscriptions-for
-  ([subscriber-key]
-     (reduce #(if (contains? (second %2) subscriber-key) (conj %1 (first %2)) %1) [] @subscribed-views))
-  ([subscriber-key prefix]
-     (reduce #(if (contains? (second %2) subscriber-key) (conj %1 (first %2)) %1) [] (get @subscribed-views prefix))))
+  ([subscriber-key] (subscriptions-for subscriber-key default-ns))
+  ([subscriber-key namespace]
+     (reduce #(if (contains? (second %2) subscriber-key) (conj %1 (first %2)) %1) [] (get @subscribed-views namespace))))
 
 (defn subscribed-to
-  ([view-sig]
-     (get @subscribed-views view-sig))
-  ([view-sig prefix]
-     (get-in @subscribed-views [prefix view-sig])))
+  ([view-sig] (subscribed-to view-sig default-ns))
+  ([view-sig namespace]
+     (get-in @subscribed-views [namespace view-sig])))
 
 (defn subscribed-to?
   ([subscriber-key view-sig]
-     (subscribed-to? subscriber-key view-sig nil))
-  ([subscriber-key view-sig prefix]
-     (if-let [view-subs (if prefix (subscribed-to view-sig prefix) (subscribed-to view-sig))]
+     (subscribed-to? subscriber-key view-sig default-ns))
+  ([subscriber-key view-sig namespace]
+     (if-let [view-subs (subscribed-to view-sig namespace)]
        (view-subs subscriber-key))))
 
 (defn- remove-key-or-view
-  [subscriber-key view-sig prefix]
+  [subscriber-key view-sig namespace]
   (fn [subbed-views]
-    (let [path    (if prefix [prefix view-sig] [view-sig])
+    (let [path    [namespace view-sig]
           updated (update-in subbed-views path disj subscriber-key)]
       (if (seq (get-in updated path))
         updated
         (do (swap! compiled-views dissoc view-sig) ; remove the compiled view as well
-            (if prefix
-              (update-in updated [prefix] dissoc view-sig)
-              (dissoc updated view-sig)))))))
+            (update-in updated [namespace] dissoc view-sig))))))
 
 (defn remove-subscription!
   ([subscriber-key view-sig]
-     (remove-subscription! subscriber-key view-sig nil))
-  ([subscriber-key view-sig prefix]
-     (when (subscribed-to? subscriber-key view-sig (if prefix prefix))
-       (swap! subscribed-views (remove-key-or-view subscriber-key view-sig prefix)))))
+     (remove-subscription! subscriber-key view-sig default-ns))
+  ([subscriber-key view-sig namespace]
+     (when (subscribed-to? subscriber-key view-sig namespace)
+       (swap! subscribed-views (remove-key-or-view subscriber-key view-sig namespace)))))
 
 (defn compiled-view-for
   [view-sig]

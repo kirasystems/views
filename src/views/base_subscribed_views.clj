@@ -1,7 +1,7 @@
 (ns views.base-subscribed-views
   (:require
    [views.db.load :refer [initial-views]]
-   [views.subscribed-views :refer [SubscribedViews subscriber-key-fn prefix-fn]]
+   [views.subscribed-views :refer [SubscribedViews subscriber-key-fn namespace-fn]]
    [views.subscriptions :as vs :refer [add-subscriptions! remove-subscription! subscriptions-for]]
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.core.async :refer [put! <! go thread]]))
@@ -51,8 +51,8 @@
           view-sigs      (view-filter sub-req (:views sub-req) templates opts)] ; this is where security comes in.
       (info "Subscribing views: " view-sigs " for subscriber " subscriber-key)
       (when (seq view-sigs)
-        (let [subbed-views (if-let [prefix (prefix-fn this sub-req)]
-                             (add-subscriptions! subscriber-key view-sigs templates prefix)
+        (let [subbed-views (if-let [namespace (namespace-fn this sub-req)]
+                             (add-subscriptions! subscriber-key view-sigs templates namespace)
                              (add-subscriptions! subscriber-key view-sigs templates))]
           (thread
             (->> (initial-views db view-sigs templates subbed-views)
@@ -63,21 +63,21 @@
     (let [subscriber-key (subscriber-key-fn this unsub-req)
           view-sigs (:views unsub-req)]
       (info "Unsubscribing views: " view-sigs " for subscriber " subscriber-key)
-      (if-let [prefix (prefix-fn this unsub-req)]
-        (doseq [vs view-sigs] (remove-subscription! subscriber-key vs prefix))
+      (if-let [namespace (namespace-fn this unsub-req)]
+        (doseq [vs view-sigs] (remove-subscription! subscriber-key vs namespace))
         (doseq [vs view-sigs] (remove-subscription! subscriber-key vs)))))
 
   (disconnect [this disconnect-req]
     (let [subscriber-key (:subscriber-key disconnect-req)
-          prefix         (prefix-fn this disconnect-req)
-          view-sigs      (if prefix (subscriptions-for subscriber-key prefix) (subscriptions-for subscriber-key))]
-      (if prefix
-        (doseq [vs view-sigs] (remove-subscription! subscriber-key vs prefix))
+          namespace         (namespace-fn this disconnect-req)
+          view-sigs      (if namespace (subscriptions-for subscriber-key namespace) (subscriptions-for subscriber-key))]
+      (if namespace
+        (doseq [vs view-sigs] (remove-subscription! subscriber-key vs namespace))
         (doseq [vs view-sigs] (remove-subscription! subscriber-key vs)))))
 
   (subscriber-key-fn [this msg] (:subscriber-key msg))
 
-  (prefix-fn [this msg] nil)
+  (namespace-fn [this msg] nil)
 
   ;; DB interaction
   (subscribed-views [this] @vs/compiled-views)

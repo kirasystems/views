@@ -1,7 +1,7 @@
 (ns views.base-subscribed-views-test
   (:require
    [views.base-subscribed-views :as bsv] ; :refer [BaseSubscribedViews]]
-   [views.subscribed-views :refer [SubscribedViews subscriber-key-fn prefix-fn subscribe-views unsubscribe-views disconnect]]
+   [views.subscribed-views :refer [SubscribedViews subscriber-key-fn namespace-fn subscribe-views unsubscribe-views disconnect]]
    [views.subscriptions :as vs :refer [subscribed-to?]]
    [views.fixtures :as vf]
    [clojure.test :refer [use-fixtures deftest is]]

@@ -6,7 +6,7 @@
   (unsubscribe-views [this unsub-request])
   (disconnect [this disconnect-request])
   (subscriber-key-fn [this msg])
-  (prefix-fn [this msg])
+  (namespace-fn [this msg])
 
   ;; DB interaction
   (broadcast-deltas [this db views-with-deltas])
