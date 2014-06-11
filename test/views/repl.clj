@@ -1,24 +1,13 @@
 (ns views.repl
-  (:require [honeysql.core :as hsql]
-            [edl.core :refer [defschema]]
-            [views.core :as vc]
-            [views.core-test]
-            [views.db.load :as vdl]
-            [views.persistence]
-            [views.subscriptions]
-            [views.subscriptions-test]
-            [views.db.load-test]
-            [views.subscribed-views :as sv]
-            [views.base-subscribed-views :as vb]
-            [views.base-subscribed-views-test]
-            [views.fixtures :as vf]
-            [clojure.data.generators :as dg]
-            [honeysql.core :as hsql]
-            [clojure.java.jdbc :as j]
-            [views.db.core :as vdb]
-            ;; [views.db.core-test]
-            [views.all-tests :as at]
-            [clj-logging-config.log4j :refer [set-logger! set-loggers!]]))
+  (:require
+   [honeysql.core :as hsql]
+   [edl.core :refer [defschema]]
+   [views.core :as vc]
+   [views.subscribed-views :as sv]
+   [views.fixtures :as vf]
+   [clojure.data.generators :as dg]
+   [views.db.core :as vdb]
+   [clj-logging-config.log4j :refer [set-logger! set-loggers!]]))
 
 (defn rand-str
   ([] (rand-str 10))
