@@ -7,5 +7,5 @@
   (disconnect [this disconnect-request])
 
   ;; DB interaction
-  (broadcast-deltas [this db views-with-deltas])
+  (broadcast-deltas [this deltas])
   (subscribed-views [this args]))

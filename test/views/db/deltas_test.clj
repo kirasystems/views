@@ -1,10 +1,11 @@
-(ns views.db.core-test
+(ns views.db.deltas-test
   (:require
    [clojure.test :refer [deftest is run-tests]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
    [views.fixtures :as vf]
    [views.db.core :as vdb]
+   [views.db.deltas :as vdbd]
    [views.base-subscribed-views :as bsv])
   (:import
    [views.base_subscribed_views BaseSubscribedViews]))
@@ -46,14 +47,14 @@
 (deftest constructs-view-check-template
   (let [update-bar (update-bar-template "foo" [:= :id 123])
         vm         (vdb/view-map join-test-template [:join-test 1 "foo"])
-        check-template (:view-check (vdb/view-check-template vm update-bar))]
+        check-template (:view-check (vdbd/view-check-template vm update-bar))]
     (is (= (set (:select check-template)) #{:f.id :f.val3}))
     (is (= (set (rest (:where check-template))) #{[:= :f.val2 "constant"] [:= :b.id 123]}))))
 
 (deftest view-check-template-generates-proper-sql
   (let [update-bar (update-bar-template "foo" [:= :id 123])
         vm         (vdb/view-map join-test-template [:join-test 1 "foo"])
-        check-template (:view-check (vdb/view-check-template vm update-bar))]
+        check-template (:view-check (vdbd/view-check-template vm update-bar))]
     (is (= (hsql/format check-template)
            ["SELECT f.id, f.val3 FROM foo f INNER JOIN bar b ON b.id = f.b_id LEFT JOIN baz ba ON ba.id = b.ba_id RIGHT JOIN qux q ON q.id = ba.q_id WHERE (b.id = 123 AND f.val2 = ?)" "constant"]))))
 
@@ -65,7 +66,7 @@
                        (vdb/view-map join-test-template [:join-test 1 "foo"])  ; has :bar
                        (vdb/view-map join-test-template [:join-test 2 "bar"])] ; has :bar
         update-bar    (update-bar-template "foo" [:= :id 123])
-        checked-views (vdb/prepare-view-checks views update-bar)]
+        checked-views (vdbd/prepare-view-checks views update-bar)]
 
     ;; It should return one check for the bar-template above,
     ;; and 1 for *both* the joint-test-templates.
@@ -74,9 +75,9 @@
 ;; What is this for?
 (def left-join-example (hsql/build :select [:R.a :S.C] :from :R :left-join [:S [:= :R.B :S.B]] :where [:!= :S.C 20]))
 
-(deftest notes-view-map-as-no-delta-calc
-  (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})]
-    (is (:bulk-update? (vdb/view-map tmpl [:users])))))
+;; (deftest notes-view-map-as-no-delta-calc
+;;   (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})]
+;;     (is (:bulk-update? (vdb/view-map tmpl [:users])))))
 
 ;; (defschema schema vf/db "public")
 
