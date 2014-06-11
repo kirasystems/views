@@ -17,7 +17,9 @@
 
 (def user-insert (hsql/build :insert-into :users :values [{:name (rand-str) :created_on (vf/sql-ts)}]))
 
-(defn make-opts [] (vc/config {:db vf/db :schema test-schema :templates vf/templates :unsafe? true}))
+(defn make-opts
+  ([] (make-opts vf/templates))
+  ([templates] (vc/config {:db vf/db :schema test-schema :templates templates :unsafe? true})))
 
 (defn test-subscribe
   ([sk views] (test-subscribe sk views (make-opts)))
