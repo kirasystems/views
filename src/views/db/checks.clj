@@ -12,14 +12,14 @@
      {:node true
       :state (conj s n)})))
 
-(defn swap-wc-preds*
+(defn swap-wc-preds
   [wc]
   (let [root (z/vector-zip wc)]
     (zv/visit root nil [(replace-param-pred)])))
 
 (defn swap-preds
   [vm]
-  (let [{:keys [node state]} (swap-wc-preds* (:where vm))]
+  (let [{:keys [node state]} (swap-wc-preds (:where vm))]
     {:q (assoc vm :where node) :p state}))
 
 (defn view-sig->dummy-args
