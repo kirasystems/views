@@ -13,7 +13,8 @@
                  [honeysql "0.4.3"]
                  [edl "0.1.0"]
                  [org.postgresql/postgresql "9.2-1003-jdbc4"]
-                 [clj-logging-config "1.9.10"]]
+                 [clj-logging-config "1.9.10"]
+                 [zip-visit "1.0.2"]]
 
   :profiles {:test {:dependencies [[org.clojure/tools.nrepl "0.2.3"]
                                    [environ "0.4.0"]
