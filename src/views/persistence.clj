@@ -1,8 +1,6 @@
 (ns views.persistence
   (:require
-   [clojure.java.jdbc :as j]
-   [views.subscriptions :refer [add-subscription! remove-subscription! compiled-view-for compiled-views-for subscriptions-for]]
-   [views.db.load :refer [initial-view]]))
+   [views.subscriptions :refer [add-subscription! remove-subscription! compiled-view-for compiled-views-for subscriptions-for]]))
 
 (defprotocol IPersistence
   (subscribe-to-view! [this db view-sig opts])
@@ -14,9 +12,7 @@
   IPersistence
   (subscribe-to-view!
     [persistor db view-sig {:keys [templates subscriber-key namespace]}]
-    (j/with-db-transaction [t db :isolation :serializable]
-      (add-subscription! view-sig templates subscriber-key namespace)
-      (initial-view t view-sig templates (:view (compiled-view-for view-sig)))))
+    (add-subscription! view-sig templates subscriber-key namespace))
 
   (unsubscribe-from-view!
     [this view-sig subscriber-key namespace]

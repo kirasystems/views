@@ -179,15 +179,13 @@
        a collection of view-maps.
 
      - broadcast-deltas takes ... ."
-  ([action-map opts]
-     (vexec! (:db opts) action-map opts))
-  ([db action-map {:keys [schema base-subscribed-views templates]}]
-     (let [subbed-views   (subscribed-views base-subscribed-views db)
-           transaction-fn #(do-view-transaction schema db subbed-views action-map templates)]
-       (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
-         (let [{:keys [new-deltas result-set]} (transaction-fn)]
-           (swap! deltas into new-deltas)
-           result-set)
-         (let [{:keys [new-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
-           (broadcast-deltas base-subscribed-views new-deltas)
-           result-set)))))
+  [{:keys [db schema base-subscribed-views templates] :as conf} action-map]
+  (let [subbed-views   (subscribed-views base-subscribed-views db)
+        transaction-fn #(do-view-transaction schema db subbed-views action-map templates)]
+    (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
+      (let [{:keys [new-deltas result-set]} (transaction-fn)]
+        (swap! deltas into new-deltas)
+        result-set)
+      (let [{:keys [new-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
+        (broadcast-deltas base-subscribed-views new-deltas)
+        result-set))))

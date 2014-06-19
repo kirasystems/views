@@ -17,21 +17,21 @@
 
 (def user-insert (hsql/build :insert-into :users :values [{:name (rand-str) :created_on (vf/sql-ts)}]))
 
-(defn make-opts
-  ([] (make-opts vf/templates))
+(defn make-config
+  ([] (make-config vf/templates))
   ([templates] (vc/config {:db vf/db :schema test-schema :templates templates :unsafe? true})))
 
 (defn test-subscribe
-  ([sk views] (test-subscribe sk views (make-opts)))
+  ([sk views] (test-subscribe sk views (make-config)))
   ([sk views opts]
      (sv/subscribe-views (:base-subscribed-views opts) {:subscriber-key sk :views [[:users]]})))
 
 (comment
   (require '[clj-logging-config.log4j :as lc] '[views.repl :as vr] '[views.db.core :as vdb] :reload)
   (lc/set-loggers! "views.base-subscribed-views" {:level :info})
-  (def opts (vr/make-opts))
+  (def conf (vr/make-config))
   (vr/test-subscribe 1 [[:users]])
-  (vdb/vexec! vr/user-insert opts)
+  (vdb/vexec! conf vr/user-insert)
   (vr/test-subscribe 2 [[:users]])
-  (vdb/vexec! vr/user-insert opts)
+  (vdb/vexec! conf vr/user-insert)
   )

@@ -5,6 +5,7 @@
    [views.base-subscribed-views-test]
    ;; [views.db.core-test]
    [views.db.deltas-test]
+   [views.db.checks-test] ; STILL SPECULATIVE
    [views.db.honeysql-test]
    [views.db.load-test]))
 
@@ -14,5 +15,6 @@
              'views.base-subscribed-views-test
 ;;             'views.db.core-test
              'views.db.deltas-test
+             'views.db.checks-test
              'views.db.honeysql-test
              'views.db.load-test))
