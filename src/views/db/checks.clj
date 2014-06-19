@@ -27,9 +27,8 @@
   (map #(str "?" %) (range 0 (count (rest view-sig)))))
 
 (defn view-check
-  [action view-fn view-sig]
-  (let [view-map (apply view-fn (view-sig->dummy-args view-sig))
-        {:keys [p q]} (swap-preds view-map)]
+  [action dummy-vm]
+  (let [{:keys [p q]} (swap-preds dummy-vm)]
     (-> q
         (update-in [:where] #(merge % (:where action)))
         (assoc :select (mapv second p)))))

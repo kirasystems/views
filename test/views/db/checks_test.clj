@@ -15,8 +15,9 @@
     (is (= (:where q) (:where swapped)))))
 
 (deftest constructs-view-check
-  (let [update (hsql/build :update :foo :set {:d "d"} :where [:= :c "c"])
-        check  (hsql/build :select [:a :b] :from :foo :where [:and [:and true true] [:= :c "c"]])
-        calcc  (vc/view-check update view [:view 1 2])]
+  (let [dummy-vm (apply view (vc/view-sig->dummy-args [:view 1 2]))
+        update   (hsql/build :update :foo :set {:d "d"} :where [:= :c "c"])
+        check    (hsql/build :select [:a :b] :from :foo :where [:and [:and true true] [:= :c "c"]])
+        calcc    (vc/view-check update dummy-vm)] ;;view )]
     (is (= (into #{} (:select check)) (into #{} (:select calcc))))
     (is (= (:where check) (:where calcc)))))
