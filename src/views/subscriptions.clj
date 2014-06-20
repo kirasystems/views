@@ -79,5 +79,5 @@
      (get-in @subscribed-views [namespace view-sig :view-data])))
 
 (defn compiled-views-for
-  [namespace]
-  (get @subscribed-views namespace))
+  ([] (compiled-views-for default-ns))
+  ([namespace] (get @subscribed-views namespace)))

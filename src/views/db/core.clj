@@ -145,18 +145,21 @@
         (throw e))))) ;; otherwise rethrow
 
 (defmacro with-view-transaction
-  [subscribed-views binding & forms]
-  (let [tvar (first binding)]
+  [config binding & forms]
+  (let [tvar (first binding)
+        ns   (nth binding 2)]
     `(if (:deltas ~(second binding)) ;; check if we are in a nested transaction
        (let [~tvar ~(second binding)] ~@forms)
        (do-transaction-fn-with-retries
-         (fn []
-           (let [deltas# (atom [])
-                 result# (j/with-db-transaction [t# ~(second binding) :isolation :serializable]
-                                                (let [~tvar (assoc t# :deltas deltas#)]
-                                                  ~@forms))]
-               (broadcast-deltas ~subscribed-views @deltas#)
-               result#))))))
+        (fn []
+          (let [base-subscribed-views# (:base-subscribed-views ~config)
+                deltas# (atom [])
+                result# (j/with-db-transaction [t# ~(second binding) :isolation :serializable]
+                          (let [~tvar (assoc t# :deltas deltas#)]
+                            ~@forms))
+                ~ns     ~(nth binding 3)]
+            (broadcast-deltas base-subscribed-views# @deltas# ~ns)
+            result#))))))
 
 (defn vexec!
   "Used to perform arbitrary insert/update/delete actions on the database,
@@ -179,13 +182,13 @@
        a collection of view-maps.
 
      - broadcast-deltas takes ... ."
-  [{:keys [db schema base-subscribed-views templates] :as conf} action-map]
-  (let [subbed-views   (subscribed-views base-subscribed-views db)
+  [{:keys [db schema base-subscribed-views templates namespace] :as conf} action-map]
+  (let [subbed-views    (subscribed-views base-subscribed-views namespace)
         transaction-fn #(do-view-transaction schema db subbed-views action-map templates)]
     (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
       (let [{:keys [new-deltas result-set]} (transaction-fn)]
         (swap! deltas into new-deltas)
         result-set)
       (let [{:keys [new-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
-        (broadcast-deltas base-subscribed-views new-deltas)
+        (broadcast-deltas base-subscribed-views new-deltas namespace)
         result-set))))

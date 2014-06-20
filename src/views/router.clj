@@ -2,24 +2,27 @@
   (:require
    [views.subscribed-views :refer [subscribe-views unsubscribe-views disconnect]]
    [clojure.core.async :refer [go go-loop chan pub sub unsub close! >! >!! <! <!! filter<]]
-   [clojure.tools.logging :refer [debug]]))
+   [clojure.tools.logging :refer [info debug]]))
 
 (defn handle-subscriptions!
   [subscribed-views subscriptions]
   (go (while true
         (let [sub (<! subscriptions)]
+          (info "Subscribing (in router): " sub)
           (subscribe-views subscribed-views sub)))))
 
 (defn handle-unsubscriptions!
   [subscribed-views unsubscriptions]
   (go (while true
         (let [unsub (<! unsubscriptions)]
+          (info "Unsubscribing (in router): " unsub)
           (unsubscribe-views subscribed-views unsub)))))
 
 (defn handle-disconnects!
   [subscribed-views disconnects]
   (go (while true
         (let [disc (<! disconnects)]
+          (info "Disconnecting (in router): " disc)
           (disconnect subscribed-views disc)))))
 
 (defn init!

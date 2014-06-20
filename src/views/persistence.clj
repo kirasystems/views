@@ -23,4 +23,6 @@
     (doseq [vs (subscriptions-for subscriber-key namespace)]
       (remove-subscription! vs subscriber-key namespace)))
 
-  (get-subscribed-views [this namespace] (compiled-views-for namespace)))
+  (get-subscribed-views [this namespace]
+    ;; Don't like this
+    (if namespace (compiled-views-for namespace) (compiled-views-for))))
