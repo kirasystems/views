@@ -61,7 +61,7 @@
     (merge {:args          (rest view-sig)
             :view-sig      view-sig
             :view          compiled-view
-            :bulk-update?  (:bulk-update? (meta view-template))
+            :refresh-only? (:refresh-only (meta view-template))
             :tables        (set (vh/extract-tables compiled-view))}
            (compile-dummy-view view-template (rest view-sig)))))
 
@@ -73,14 +73,21 @@
   (let [lookup (first view-sig)]
     (view-map (get-in templates [lookup :fn]) view-sig)))
 
-(defn calculate-bulk-updates
-  [deltas db templates bulk-update-views]
-  (reduce #(assoc %1 (:view-sig %2) {:bulk-update (vdbl/initial-view db (:view-sig %2) templates (:view %2))}) deltas bulk-update-views))
+(defn calculate-refresh-sets
+  "For refresh-only views, calculates the refresh-set and adds it to the view's delta update collection."
+  [deltas db templates refresh-only-views]
+  (reduce
+   (fn [d {:keys [view-sig view] :as rov}]
+     (let [refresh-set (get (vdbl/initial-view db view-sig templates view) view-sig)]
+       (update-in d [view-sig] (fn [dd] (map #(assoc % :refresh-set refresh-set) dd)))))
+   deltas
+   refresh-only-views))
 
 (defn format-deltas
+  "Removes extraneous data from view delta response collections."
   [views-with-deltas]
   (->> views-with-deltas
-       (map #(select-keys % [:view-sig :delete-deltas :insert-deltas :bulk-load]))
+       (map #(select-keys % [:view-sig :delete-deltas :insert-deltas :refresh-set]))
        (group-by :view-sig)))
 
 (defn do-view-transaction
@@ -108,13 +115,13 @@
   [schema db all-views action templates]
   ;; Every update connected with a view is done in a transaction:
   (j/with-db-transaction [t db :isolation :serializable]
-    (let [{bulk-update-views true reg-views nil} (group-by :bulk-update? all-views)
-          need-deltas       (vd/do-view-pre-checks t reg-views action)
-          need-deltas       (map #(vd/generate-view-delta-map % action) need-deltas)
-          table             (-> action vh/extract-tables ffirst)
-          pkey              (vd/get-primary-key schema table)
+    (let [need-deltas        (vd/do-view-pre-checks t all-views action)
+          need-deltas        (map #(vd/generate-view-delta-map % action) need-deltas)
+          table              (-> action vh/extract-tables ffirst)
+          pkey               (vd/get-primary-key schema table)
+          full-refresh-views (get (group-by :refresh-only? all-views) true)
           {:keys [views-with-deltas result-set]} (vd/perform-action-and-return-deltas schema t need-deltas action table pkey)
-          deltas            (calculate-bulk-updates (format-deltas views-with-deltas) t templates bulk-update-views)]
+          deltas             (calculate-refresh-sets (format-deltas views-with-deltas) t templates full-refresh-views)]
       {:new-deltas deltas :result-set result-set})))
 
 ;;
