@@ -4,132 +4,8 @@
   (:require
    [clojure.java.jdbc :as j]
    [clojure.tools.logging :refer [debug]]
-   [views.db.load :as vdbl]
-   [views.db.honeysql :as vh]
    [views.db.deltas :as vd]
    [views.subscribed-views :refer [subscribed-views broadcast-deltas]]))
-
-;;
-;; Takes the HoneySQL template for a view and the arglist
-;; and compiles the view with a set of dummy args in the
-;; format
-;;   [?1, ?2, ?3 ... ?N]
-;;
-;; Returns a map of the compiled hash-map and the args
-;; with keys :dummy-view and :dummy-args respectively.
-;;
-(defn- compile-dummy-view
-  [view-template args]
-  (let [dummy-args (take (count args) (range))
-        dummy-args (map #(str "?" %) dummy-args)]
-    {:dummy-view (apply view-template dummy-args)
-     :dummy-args dummy-args}))
-
-;;
-;; Terminology and data structures used throughout this code
-;;
-;; <name>-template - refers to a function which receives parameters
-;;                   and returns a HoneySQL hash-map with params interpolated.
-;;
-;; action          - describes the HoneySQL hash-map for the action to be performed
-;;                   --the template function has already been called and returned this
-;;                   with the appropriate parameter arguments.
-;;
-;; view-map        - contains a set of computed information for each view itself.
-;;                   Refer to the view-map doc-string for more information.
-;;
-;; view-check      - SQL for checking whether or not a view needs to receive deltas
-;;                   upon completion of an operation.
-;;
-
-(defn view-map
-  "Constructs a view map from a HoneySQL view function and its arguments.
-   Contains four fields:
-    :view          - the hash-map with interpolated parameters
-    :view-sig      - the \"signature\" for the view, i.e. [:matter 1]
-    :args          - the arguments passed in.
-    :tables        - the tables present in all :from, :insert-into,
-                 :update, :delete-from, :join, :left-join :right-join clauses
-
-   Input is a view template function and a view signature. The template
-   function must take the same number of paramters as the signature and
-   return a honeysql data structure "
-  [view-template view-sig]
-  (let [compiled-view (if (> (count view-sig) 1)
-                        (apply view-template (rest view-sig))
-                        (view-template))]
-    (merge {:args          (rest view-sig)
-            :view-sig      view-sig
-            :view          compiled-view
-            :refresh-only? (:refresh-only (meta view-template))
-            :tables        (set (vh/extract-tables compiled-view))}
-           (compile-dummy-view view-template (rest view-sig)))))
-
-(defn view-sig->view-map
-  "Takes a map of sig keys to view template function vars (templates)
-   and a view signature (view-sig the key for the template map and its args)
-   and returns a view-map for that view-sig."
-  [templates view-sig]
-  (let [lookup (first view-sig)]
-    (view-map (get-in templates [lookup :fn]) view-sig)))
-
-(defn update-deltas-with-refresh-set
-  [refresh-set]
-  (fn [view-deltas]
-    (if (coll? view-deltas)
-      (map #(assoc % :refresh-set refresh-set) view-deltas)
-      [{:refresh-set refresh-set}])))
-
-(defn calculate-refresh-sets
-  "For refresh-only views, calculates the refresh-set and adds it to the view's delta update collection."
-  [deltas db templates refresh-only-views]
-  (reduce
-   (fn [d {:keys [view-sig view] :as rov}]
-     (let [refresh-set (get (vdbl/initial-view db view-sig templates view) view-sig)]
-       (update-in d [view-sig] (update-deltas-with-refresh-set refresh-set))))
-   deltas
-   refresh-only-views))
-
-(defn format-deltas
-  "Removes extraneous data from view delta response collections."
-  [views-with-deltas]
-  (->> views-with-deltas
-       (map #(select-keys % [:view-sig :delete-deltas :insert-deltas :refresh-set]))
-       (group-by :view-sig)))
-
-(defn do-view-transaction
-  "Takes the following arguments:
-   schema    - from edl.core/defschema
-   db        - clojure.java.jdbc database connection
-   all-views - the current set of views (view-maps--see view-map fn docstring for
-                  description) in memory for the database
-   action    - the HoneySQL pre-SQL hash-map with parameters already interpolated.
-
-   The function will then perform the following sequence of actions, all run
-   within a transaction (with isolation serializable):
-
-   1) Create pre-check SQL for each view in the list.
-   2) Run the pre-check SQL (or fail out based on some simple heuristics) to
-      identify if we want to send delta messages to the view's subscribers
-      (Note: this happens after the database action for *inserts only*).
-   3) Run the database action (insert/action/delete).
-   4) Calculate deltas based on the method described in section 5.4, \"Rule Generation\"
-      of the paper \"Deriving Production Rules for Incremental Rule Maintenance\"
-      by Stefano Ceri and Jennifer Widom (http://ilpubs.stanford.edu:8090/8/1/1991-4.pdf)
-
-   The function returns the views which received delta updates with the deltas
-   keyed to each view-map at the keys :insert-deltas and :delete-deltas."
-  [schema db all-views action templates]
-  ;; Every update connected with a view is done in a transaction:
-  (j/with-db-transaction [t db :isolation :serializable]
-    (let [{full-refresh-views true normal-views nil} (group-by :refresh-only? all-views)
-          need-deltas        (vd/do-view-pre-checks t normal-views action)
-          need-deltas        (map #(vd/generate-view-delta-map % action) need-deltas)
-          table              (-> action vh/extract-tables ffirst)
-          pkey               (vd/get-primary-key schema table)
-          {:keys [views-with-deltas result-set]} (vd/perform-action-and-return-deltas schema t need-deltas action table pkey)
-          deltas             (calculate-refresh-sets (format-deltas views-with-deltas) t templates full-refresh-views)]
-      {:new-deltas deltas :result-set result-set})))
 
 ;;
 ;; Need to catch this and retry:
@@ -198,7 +74,7 @@
      - broadcast-deltas takes ... ."
   [{:keys [db schema base-subscribed-views templates namespace] :as conf} action-map]
   (let [subbed-views    (subscribed-views base-subscribed-views namespace)
-        transaction-fn #(do-view-transaction schema db subbed-views action-map templates)]
+        transaction-fn #(vd/do-view-transaction schema db subbed-views action-map templates)]
     (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
       (let [{:keys [new-deltas result-set]} (transaction-fn)]
         (swap! deltas into new-deltas)

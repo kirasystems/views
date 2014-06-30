@@ -1,5 +1,7 @@
 (ns views.db.checks
   (:require
+   [views.db.honeysql :as vh]
+   [clojure.set :refer [intersection]]
    [clojure.zip :as z]
    [zip.visit :as zv]
    [honeysql.core :as hsql]))
@@ -32,3 +34,13 @@
     (-> q
         (update-in [:where] #(merge % (:where action)))
         (assoc :select (mapv second p)))))
+
+(defn have-overlapping-tables?
+  "Takes two Honeysql hash-maps, one for action, one for view, and returns
+   boolean value representing whether or not their set of tables intersect."
+  [action view]
+  (->> [action view]
+       (map (comp set #(map first %) vh/extract-tables))
+       (apply intersection)
+       seq
+       boolean))

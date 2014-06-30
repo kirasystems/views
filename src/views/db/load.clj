@@ -1,5 +1,6 @@
 (ns views.db.load
   (:require
+   [clojure.tools.logging :refer [debug info warn error]]
    [clojure.java.jdbc :as j]
    [honeysql.core :as hsql]))
 

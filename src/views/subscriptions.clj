@@ -1,6 +1,6 @@
 (ns views.subscriptions
   (:require
-   [views.db.core :as vdb]))
+   [views.db.deltas :as vd]))
 
 ;;
 ;; {namespace {[:view-sig 1 "arg2"] {:subscriptions [1 2 3 4 ... ] :view-data {:view ...}}}}
@@ -22,7 +22,7 @@
   (fn [svs]
     (-> svs
         (update-in [namespace view-sig :subscriptions] (add-subscriber-key subscriber-key))
-        (assoc-in  [namespace view-sig :view-data]     (vdb/view-map (get-in templates [(first view-sig) :fn]) view-sig)))))
+        (assoc-in  [namespace view-sig :view-data]     (vd/view-map (get-in templates [(first view-sig) :fn]) view-sig)))))
 
 (defn add-subscription!
   ([view-sig templates subscriber-key]

@@ -1,88 +1,77 @@
 (ns views.db.deltas-test
   (:require
-   [clojure.test :refer [deftest is run-tests]]
+   [clojure.test :refer [use-fixtures deftest is]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
-   [views.fixtures :as vf]
+   [views.fixtures :as vf :refer [vschema sql-ts]]
    [views.db.core :as vdb]
-   [views.db.deltas :as vdbd]
-   [views.base-subscribed-views :as bsv])
-  (:import
-   [views.base_subscribed_views BaseSubscribedViews]))
+   [views.db.deltas :as vd]))
 
-(defn join-test-template
-  [id val3]
-  (-> (hh/select :f.id :f.val1 :f.val2 :b.val1)
-      (hh/from [:foo :f])
-      (hh/join [:bar :b] [:= :b.id :f.b_id])
-      (hh/left-join [:baz :ba] [:= :ba.id :b.ba_id])
-      (hh/right-join [:qux :q] [:= :q.id :ba.q_id])
-      (hh/where [:= :f.id id] [:= :f.val3 val3] [:= :f.val2 "constant"])))
+(defn dvt-helper
+  ([all-views action] (dvt-helper all-views action vf/templates))
+  ([all-views action templates]
+     (vd/do-view-transaction vschema vf/db all-views action templates)))
 
-(defn no-where-view-template
-  []
-  (-> (hh/select :f.id :f.val1 :f.val2)
-      (hh/from [:foo :f])))
+(use-fixtures :each vf/database-fixtures!)
 
-(defn bar-template
-  [id]
-  (-> (hh/select :b.id :b.val1)
-      (hh/from [:bar :b])
-      (hh/where [:= :val2 "some constant"]
-                [:= :id id])))
+(deftest builds-view-map
+  (let [{:keys [view-sig view refresh-only?]} (vd/view-map vf/users-tmpl [:users])]
+    (is (= view-sig [:users]))
+    (is (= view {:from [:users], :select [:id :name :created_on]}))
+    (is (nil? refresh-only?))))
 
-(defn unrelated-template
-  [id]
-  (-> (hh/select :u.id :u.val1)
-      (hh/from :unrelated
-      (hh/where [:= :val "some constant"]
-                [:= :id id]))))
+(defn non-nil-values-for-keys?
+  [hm keys]
+  (every? #(% hm) keys))
 
-(defn update-bar-template
-  [val1 wc]
-  (-> (hh/update :bar)
-      (hh/values {:val1 val1})
-      (hh/where wc)))
+(deftest calculates-insert-deltas
+  (let [views     [(vd/view-map vf/users-tmpl [:users])]
+        user-args {:name "Test user" :created_on (sql-ts)}
+        insert    (hsql/build :insert-into :users :values [user-args])
+        {:keys [new-deltas result-set]} (dvt-helper views insert)
+        insert-delta (first (:insert-deltas (first (get new-deltas [:users]))))]
 
-(deftest constructs-view-check-template
-  (let [update-bar (update-bar-template "foo" [:= :id 123])
-        vm         (vdb/view-map join-test-template [:join-test 1 "foo"])
-        check-template (:view-check (vdbd/view-check-template vm update-bar))]
-    (is (= (set (:select check-template)) #{:f.id :f.val3}))
-    (is (= (set (rest (:where check-template))) #{[:= :f.val2 "constant"] [:= :b.id 123]}))))
+    ;; Result set
+    (is (not (nil? (:id (first result-set)))))
+    (is (= user-args (dissoc (first result-set) :id)))
 
-(deftest view-check-template-generates-proper-sql
-  (let [update-bar (update-bar-template "foo" [:= :id 123])
-        vm         (vdb/view-map join-test-template [:join-test 1 "foo"])
-        check-template (:view-check (vdbd/view-check-template vm update-bar))]
-    (is (= (hsql/format check-template)
-           ["SELECT f.id, f.val3 FROM foo f INNER JOIN bar b ON b.id = f.b_id LEFT JOIN baz ba ON ba.id = b.ba_id RIGHT JOIN qux q ON q.id = ba.q_id WHERE (b.id = 123 AND f.val2 = ?)" "constant"]))))
+    ;; Deltas
+    (is (= (:name user-args) (:name insert-delta)))
+    (is (= (:created_on user-args) (:created_on insert-delta)))
+    (is (non-nil-values-for-keys? insert-delta (-> views first :view :select)))))
 
-(deftest creates-collection-of-views-to-check
-  (let [views         [(vdb/view-map no-where-view-template [:no-where])      ; no :bar
-                       (vdb/view-map no-where-view-template [:no-where])      ; no :bar
-                       (vdb/view-map bar-template [:bar 1])              ; has :bar
-                       (vdb/view-map unrelated-template [:unrelated 2])        ; no :bar
-                       (vdb/view-map join-test-template [:join-test 1 "foo"])  ; has :bar
-                       (vdb/view-map join-test-template [:join-test 2 "bar"])] ; has :bar
-        update-bar    (update-bar-template "foo" [:= :id 123])
-        checked-views (vdbd/prepare-view-checks views update-bar)]
+(deftest calculates-delete-deltas
+  (let [views     [(vd/view-map vf/users-tmpl [:users])]
+        user-args {:name "Test user" :created_on (sql-ts)}
+        user      (vf/view-action! (hsql/build :insert-into :users :values [user-args]))
+        delete    (hsql/build :delete-from :users :where [:= :name (:name user-args)])
+        {:keys [new-deltas result-set]} (dvt-helper views delete)
+        delete-delta (first (:delete-deltas (first (get new-deltas [:users]))))]
 
-    ;; It should return one check for the bar-template above,
-    ;; and 1 for *both* the joint-test-templates.
-    (is (= (count checked-views) 2))))
+    ;; Deltas
+    (is (= (:name user-args) (:name delete-delta)))
+    (is (= (:created_on user-args) (:created_on delete-delta)))
+    (is (non-nil-values-for-keys? delete-delta (-> views first :view :select)))))
 
-;; What is this for?
-(def left-join-example (hsql/build :select [:R.a :S.C] :from :R :left-join [:S [:= :R.B :S.B]] :where [:!= :S.C 20]))
+(deftest calculates-update-deltas
+  (let [views     [(vd/view-map vf/users-tmpl [:users])]
+        user-args {:name "Test user" :created_on (sql-ts)}
+        user      (vf/view-action! (hsql/build :insert-into :users :values [user-args]))
+        new-name  "new name!"
+        update    (hsql/build :update :users :set {:name new-name} :where [:= :name (:name user-args)])
+        {:keys [new-deltas result-set]} (dvt-helper views update)
+        {:keys [insert-deltas delete-deltas]} (first (get new-deltas [:users]))]
 
-;; (deftest notes-view-map-as-no-delta-calc
-;;   (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})]
-;;     (is (:bulk-update? (vdb/view-map tmpl [:users])))))
+    ;; Deltas
+    (is (= (:name user-args) (:name (first delete-deltas))))
+    (is (= new-name (:name (first insert-deltas))))))
 
-;; (defschema schema vf/db "public")
+(deftest does-not-calculate-deltas-for-unrelated-views
+  (let [views     [(vd/view-map vf/users-tmpl [:users])
+                   (vd/view-map vf/all-comments-tmpl [:all-comments])]
+        user-args {:name "Test user" :created_on (sql-ts)}
+        insert    (hsql/build :insert-into :users :values [user-args])
+        {:keys [new-deltas result-set]} (dvt-helper views insert)]
 
-;; (deftest sends-entire-view-on-every-update-with-bulk-update
-;;   (let [tmpl (with-meta vf/users-tmpl {:bulk-update? true})
-;;         vm   (vdb/view-map tmpl [:users])
-;;         bsv  (BaseSubscribedViews. vf/db 
-
+;;    (is (= (count (insert-deltas new-deltas) 1))
+    (is (nil? (get new-deltas [:all-comments])))))
