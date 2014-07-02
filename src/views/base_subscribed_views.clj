@@ -9,6 +9,8 @@
    [clojure.core.async :refer [put! <! go thread]]
    [clojure.java.jdbc :as j]))
 
+(declare post-process-deltas)
+
 (defn send-fn*
   [send-fn address subject msg]
   (if send-fn
@@ -35,7 +37,7 @@
           db             (if db-fn (db-fn msg) (:db config))
           subscriber-key (subscriber-key-fn* subscriber-key-fn msg)
           namespace      (namespace-fn* namespace-fn msg)
-          view-sigs      (view-filter msg (view-sig-fn* view-sig-fn msg) templates {:unsafe? unsafe?}) ; this is where security comes in. Move?
+          view-sigs      (view-filter msg (view-sig-fn* view-sig-fn msg) templates {:unsafe? unsafe?}) ; this is where security comes in.
           pconfig        {:templates templates :subscriber-key subscriber-key :namespace namespace}]
       (debug "Subscribing views: " view-sigs " for subscriber " subscriber-key ", in namespace " namespace)
       (when (seq view-sigs)
@@ -71,10 +73,19 @@
     (map :view-data (vals (get-subscribed-views (:persistence config) namespace))))
 
   (broadcast-deltas [this deltas namespace]
-    (doseq [vs (keys deltas)]
-      (debug "Subscribers subscribed to " vs " are "
-             (if namespace (subscribed-to vs namespace) (subscribed-to vs)))
-      (doseq [sk (if namespace (subscribed-to vs namespace) (subscribed-to vs))]
-        (doseq [ds (get deltas vs)]
-          (debug "Sending delta " {vs (dissoc ds :view-sig)} " to addr " sk)
-          (send-fn* (:send-fn config) sk :views.deltas {vs (dissoc ds :view-sig)}))))))
+    (let [{:keys [templates]} config]
+      (doseq [vs (keys deltas)]
+        (debug "Subscribers subscribed to " vs " are "
+               (if namespace (subscribed-to vs namespace) (subscribed-to vs)))
+        (doseq [sk (if namespace (subscribed-to vs namespace) (subscribed-to vs))]
+          (doseq [ds (map #(post-process-deltas templates %) (get deltas vs))]
+            (debug "Sending delta " {vs (dissoc ds :view-sig)} " to addr " sk)
+            (send-fn* (:send-fn config) sk :views.deltas {vs (dissoc ds :view-sig)})))))))
+
+(defn post-process-deltas
+  [templates delta-map]
+  (let [vs (:view-sig delta-map)
+        dm (dissoc delta-map :view-sig)]
+    (if-let [post-fn (get-in templates [(first vs) :post-fn])]
+      (reduce #(assoc %1 %2 (map post-fn (get dm %2))) {} (keys dm))
+      dm)))
