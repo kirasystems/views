@@ -1,6 +1,7 @@
 (ns views.base-subscribed-views
   (:require
-   [views.persistence :refer [subscribe-to-view! unsubscribe-from-view! unsubscribe-from-all-views! get-subscribed-views]]
+   [views.persistence :refer [subscribe-to-view! unsubscribe-from-view! unsubscribe-from-all-views!
+                              get-subscribed-views get-subscriptions]]
    [views.subscribed-views :refer [ISubscribedViews]]
    [views.subscriptions :refer [default-ns subscribed-to compiled-view-for]]
    [views.filters :refer [view-filter]]
@@ -73,11 +74,12 @@
     (map :view-data (vals (get-subscribed-views (:persistence config) namespace))))
 
   (broadcast-deltas [this deltas namespace]
-    (let [{:keys [templates]} config]
+    (let [{:keys [templates]} config
+          namespace (if namespace namespace default-ns)
+          subs      (get-subscriptions (:persistence config) namespace)]
       (doseq [vs (keys deltas)]
-        (debug "Subscribers subscribed to " vs " are "
-               (if namespace (subscribed-to vs namespace) (subscribed-to vs)))
-        (doseq [sk (if namespace (subscribed-to vs namespace) (subscribed-to vs))]
+        (debug "Subscribers subscribed to " vs " are " (get subs vs))
+        (doseq [sk (get subs vs)]
           (doseq [ds (map #(post-process-deltas templates %) (get deltas vs))]
             (debug "Sending delta " {vs (dissoc ds :view-sig)} " to addr " sk)
             (send-fn* (:send-fn config) sk :views.deltas {vs (dissoc ds :view-sig)})))))))

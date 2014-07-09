@@ -1,12 +1,15 @@
 (ns views.persistence
   (:require
-   [views.subscriptions :refer [add-subscription! remove-subscription! compiled-view-for compiled-views-for subscriptions-for]]))
+   [views.subscriptions :refer [add-subscription! remove-subscription! compiled-view-for
+                                compiled-views-for subscriptions-for all-subscriptions
+                                default-ns subscribed-views]]))
 
 (defprotocol IPersistence
   (subscribe-to-view! [this db view-sig opts])
   (unsubscribe-from-view! [this view-sig subscriber-key namespace])
   (unsubscribe-from-all-views! [this subscriber-key namespace])
-  (get-subscribed-views [this namespace]))
+  (get-subscribed-views [this namespace])
+  (get-subscriptions [this namespace]))
 
 (deftype InMemoryPersistence []
   IPersistence
@@ -25,4 +28,7 @@
 
   (get-subscribed-views [this namespace]
     ;; Don't like this
-    (if namespace (compiled-views-for namespace) (compiled-views-for))))
+    (if namespace (compiled-views-for namespace) (compiled-views-for)))
+
+  (get-subscriptions [this namespace]
+    (all-subscriptions namespace)))

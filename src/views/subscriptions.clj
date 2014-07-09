@@ -45,10 +45,20 @@
          %1)
       [] (get @subscribed-views namespace))))
 
+(defn all-subscriptions
+  ([] (all-subscriptions default-ns @subscribed-views))
+  ([namespace] (all-subscriptions namespace @subscribed-views))
+  ([namespace subscribed-views']
+     (->> (get subscribed-views' namespace)
+          (reduce #(assoc %1 (first %2) (:subscriptions (second %2))) {}))))
+
 (defn subscribed-to
-  ([view-sig] (subscribed-to view-sig default-ns))
+  ([view-sig]
+     (subscribed-to view-sig default-ns @subscribed-views))
   ([view-sig namespace]
-     (get-in @subscribed-views [namespace view-sig :subscriptions])))
+     (subscribed-to view-sig namespace @subscribed-views))
+  ([view-sig namespace subscribed-views']
+     (get-in subscribed-views' [namespace view-sig :subscriptions])))
 
 (defn subscribed-to?
   ([view-sig subscriber-key]
