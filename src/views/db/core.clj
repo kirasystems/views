@@ -36,19 +36,18 @@
 
 (defmacro with-view-transaction
   [config binding & forms]
-  (let [tvar (first binding)
-        ns   (nth binding 2)]
+  (let [tvar (first binding), this-ns (nth binding 2)]
     `(if (:deltas ~(second binding)) ;; check if we are in a nested transaction
-       (let [~tvar ~(second binding)] ~@forms)
+       (let [~tvar ~(second binding), ~this-ns ~(nth binding 3)] ~@forms)
        (do-transaction-fn-with-retries
         (fn []
           (let [base-subscribed-views# (:base-subscribed-views ~config)
-                deltas# (atom [])
-                result# (j/with-db-transaction [t# ~(second binding) :isolation :serializable]
-                          (let [~tvar (assoc t# :deltas deltas#)]
-                            ~@forms))
-                ~ns     ~(nth binding 3)]
-            (broadcast-deltas base-subscribed-views# @deltas# ~ns)
+                deltas#  (atom [])
+                result#  (j/with-db-transaction [t# ~(second binding) :isolation :serializable]
+                           (let [~tvar    (assoc t# :deltas deltas#)
+                                 ~this-ns ~(nth binding 3)]
+                             ~@forms))]
+            (broadcast-deltas base-subscribed-views# @deltas# ~(nth binding 3))
             result#))))))
 
 (defn vexec!
