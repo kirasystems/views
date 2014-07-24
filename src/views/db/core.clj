@@ -35,20 +35,19 @@
         (throw e))))) ;; otherwise rethrow
 
 (defmacro with-view-transaction
-  [config binding & forms]
-  (let [tvar (first binding), this-ns (nth binding 2)]
-    `(if (:deltas ~(second binding)) ;; check if we are in a nested transaction
-       (let [~tvar ~(second binding), ~this-ns ~(nth binding 3)] ~@forms)
+  [binding & forms]
+  (let [tvar (first binding), vc (second binding)]
+    `(if (:deltas ~vc) ;; check if we are in a nested transaction
+       (let [~tvar ~vc] ~@forms)
        (do-transaction-fn-with-retries
-        (fn []
-          (let [base-subscribed-views# (:base-subscribed-views ~config)
-                deltas#  (atom [])
-                result#  (j/with-db-transaction [t# ~(second binding) :isolation :serializable]
-                           (let [~tvar    (assoc t# :deltas deltas#)
-                                 ~this-ns ~(nth binding 3)]
-                             ~@forms))]
-            (broadcast-deltas base-subscribed-views# @deltas# ~(nth binding 3))
-            result#))))))
+         (fn []
+           (let [base-subscribed-views# (:base-subscribed-views ~vc)
+                 deltas#  (atom [])
+                 result#  (j/with-db-transaction [t# (:db ~vc) :isolation :serializable]
+                            (let [~tvar (assoc ~vc :deltas deltas# :db t#)]
+                              ~@forms))]
+             (broadcast-deltas base-subscribed-views# @deltas# (:namespace ~vc))
+             result#))))))
 
 (defn vexec!
   "Used to perform arbitrary insert/update/delete actions on the database,
@@ -71,10 +70,10 @@
        a collection of view-maps.
 
      - broadcast-deltas takes ... ."
-  [{:keys [db schema base-subscribed-views templates namespace] :as conf} action-map]
+  [{:keys [db schema base-subscribed-views templates namespace deltas] :as conf} action-map]
   (let [subbed-views    (subscribed-views base-subscribed-views namespace)
         transaction-fn #(vd/do-view-transaction schema db subbed-views action-map templates)]
-    (if-let [deltas (:deltas db)]  ;; inside a transaction we just collect deltas and do not retry
+    (if deltas  ;; inside a transaction we just collect deltas and do not retry
       (let [{:keys [new-deltas result-set]} (transaction-fn)]
         (swap! deltas into new-deltas)
         result-set)
