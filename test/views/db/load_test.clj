@@ -6,7 +6,7 @@
    [views.db.load :as vload]
    [clojure.string :refer [upper-case]]))
 
-(use-fixtures :each database-fixtures!)
+(use-fixtures :each (database-fixtures!))
 
 (defn subscribed-views
   []

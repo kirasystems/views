@@ -24,9 +24,12 @@
     (j/execute! db [(str "DELETE FROM " t)])))
 
 (defn database-fixtures!
-  [f]
-  (clean-tables! [:posts :users :comments])
-  (f))
+  ([] (database-fixtures! [:posts :users :comments]))
+  ([tables]
+     (fn [f]
+       (clean-tables! tables)
+       (f)
+       (clean-tables! tables)))) ; do it after as well in case a test breaks
 
 (defn rand-str
   [l]
@@ -43,6 +46,17 @@
 (defn user-fixture!
   [name]
   (view-action! (hsql/build :insert-into :users :values [{:name name :created_on (sql-ts)}])))
+
+(def user-fixture (atom nil))
+
+(defn with-user-fixture!
+  ([f] (with-user-fixture! "test user" f))
+  ([name f]
+     (user-fixture! name)
+     (let [user (first (j/query db ["SELECT * FROM users WHERE name = ?" name]))]
+       (reset! user-fixture user)
+       (f)
+       (reset! user-fixture nil))))
 
 (defn gen-n-users!
   [n]

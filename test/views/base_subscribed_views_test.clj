@@ -21,7 +21,7 @@
   (reset! vs/subscribed-views {})
   (f))
 
-(use-fixtures :each vf/database-fixtures! subscription-fixtures!)
+(use-fixtures :each (vf/database-fixtures!) subscription-fixtures!)
 
 (def persistence (InMemoryPersistence.))
 
@@ -67,4 +67,14 @@
         base-subbed-views (BaseSubscribedViews. (assoc view-config-fixture :send-fn send-fn))]
     (add-subscription! [:users] vf/templates 1 default-ns)
     (add-subscription! [:users] vf/templates 2 default-ns)
+    (broadcast-deltas base-subbed-views deltas nil)))
+
+(deftest sends-deltas-in-batch
+  (let [deltas {[:users] [{:view-sig [:users] :insert-deltas [{:id 1 :name "Bob"} {:id 2 :name "Alice"}]}]}
+        sent-delta {[:users] {:insert-deltas [{:id 1 :name "Bob"} {:id 2 :name "Alice"}]}}
+        send-fn #(do (is (#{1 2} %1))
+                     (is (= %2 :views.deltas))
+                     (is (= %3 sent-delta)))
+        base-subbed-views (BaseSubscribedViews. (assoc view-config-fixture :send-fn send-fn))]
+    (add-subscription! [:users] vf/templates 1 default-ns)
     (broadcast-deltas base-subbed-views deltas nil)))

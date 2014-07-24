@@ -12,7 +12,7 @@
   ([all-views action templates]
      (vd/do-view-transaction vschema vf/db all-views action templates)))
 
-(use-fixtures :each vf/database-fixtures!)
+(use-fixtures :each (vf/database-fixtures!))
 
 (deftest builds-view-map
   (let [{:keys [view-sig view refresh-only?]} (vd/view-map vf/users-tmpl [:users])]
