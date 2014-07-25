@@ -75,8 +75,8 @@
         transaction-fn #(vd/do-view-transaction schema db subbed-views action-map templates)]
     (if deltas  ;; inside a transaction we just collect deltas and do not retry
       (let [{:keys [new-deltas result-set]} (transaction-fn)]
-        (swap! deltas into new-deltas)
+        (swap! deltas #(conj % new-deltas))
         result-set)
       (let [{:keys [new-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
-        (broadcast-deltas base-subscribed-views new-deltas namespace)
+        (broadcast-deltas base-subscribed-views [new-deltas] namespace)
         result-set))))

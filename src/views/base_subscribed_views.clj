@@ -10,7 +10,7 @@
    [clojure.core.async :refer [put! <! go thread]]
    [clojure.java.jdbc :as j]))
 
-(declare post-process-deltas)
+(declare send-deltas)
 
 (defn send-fn*
   [send-fn address subject msg]
@@ -67,7 +67,7 @@
       (unsubscribe-from-all-views! persistence subscriber-key namespace)))
 
   ;;
-  ;; The two below functions get called by vexec!
+  ;; The two below functions get called by vexec!/with-view-transaction
   ;;
 
   (subscribed-views [this namespace]
@@ -77,17 +77,30 @@
     (let [{:keys [templates]} config
           namespace (if namespace namespace default-ns)
           subs      (get-subscriptions (:persistence config) namespace)]
-      (doseq [vs (keys deltas)]
-        (debug "Subscribers subscribed to " vs " are " (get subs vs))
-        (doseq [sk (get subs vs)]
-          (doseq [ds (map #(post-process-deltas templates %) (get deltas vs))]
-            (debug "Sending delta " {vs (dissoc ds :view-sig)} " to addr " sk)
-            (send-fn* (:send-fn config) sk :views.deltas {vs (dissoc ds :view-sig)})))))))
+      (send-deltas deltas subs namespace config))))
 
-(defn post-process-deltas
+(defn post-process-deltas*
   [templates delta-map]
   (let [vs (:view-sig delta-map)
         dm (dissoc delta-map :view-sig)]
     (if-let [post-fn (get-in templates [(first vs) :post-fn])]
       (reduce #(assoc %1 %2 (map post-fn (get dm %2))) {} (keys dm))
       dm)))
+
+(defn post-process-deltas
+  [delta-set templates]
+  (reduce
+   #(assoc %1 (first %2) (mapv (fn [ds] (post-process-deltas* templates ds)) (second %2)))
+   {} delta-set))
+
+(defn subscriber-keys
+  [subs skeys delta-set]
+  (into skeys (reduce #(into %1 (get subs %2)) #{} (keys delta-set))))
+
+(defn send-deltas
+  [deltas subs namespace {:keys [send-fn templates] :as config}]
+  (let [deltas (mapv #(post-process-deltas % templates) deltas)
+        sks    (reduce #(subscriber-keys subs %1 %2) #{} deltas)]
+    (doseq [sk sks]
+      (debug "Sending deltas " deltas " to subscriber " sk)
+      (send-fn* send-fn sk :views.deltas deltas))))

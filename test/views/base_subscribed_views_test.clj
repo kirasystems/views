@@ -58,23 +58,37 @@
     (is (not (subscribed-to? 1 [:user-posts 1])))
     (is (not (subscribed-to? 1 [:users])))))
 
-(deftest sends-deltas
-  (let [deltas {[:users] [{:view-sig [:users] :insert-deltas [{:foo "bar"}]}]}
-        sent-delta {[:users] {:insert-deltas [{:foo "bar"}]}}
-        send-fn #(do (is (#{1 2} %1))
-                     (is (= %2 :views.deltas))
-                     (is (= %3 sent-delta)))
-        base-subbed-views (BaseSubscribedViews. (assoc view-config-fixture :send-fn send-fn))]
-    (add-subscription! [:users] vf/templates 1 default-ns)
-    (add-subscription! [:users] vf/templates 2 default-ns)
-    (broadcast-deltas base-subbed-views deltas nil)))
+;; (deftest sends-deltas
+;;   (let [deltas {[:users] [{:view-sig [:users] :insert-deltas [{:foo "bar"}]}]}
+;;         sent-delta {[:users] {:insert-deltas [{:foo "bar"}]}}
+;;         send-fn #(do (is (#{1 2} %1))
+;;                      (is (= %2 :views.deltas))
+;;                      (is (= %3 sent-delta)))
+;;         base-subbed-views (BaseSubscribedViews. (assoc view-config-fixture :send-fn send-fn))]
+;;     (add-subscription! [:users] vf/templates 1 default-ns)
+;;     (add-subscription! [:users] vf/templates 2 default-ns)
+;;     (broadcast-deltas base-subbed-views deltas nil)))
 
 (deftest sends-deltas-in-batch
-  (let [deltas {[:users] [{:view-sig [:users] :insert-deltas [{:id 1 :name "Bob"} {:id 2 :name "Alice"}]}]}
-        sent-delta {[:users] {:insert-deltas [{:id 1 :name "Bob"} {:id 2 :name "Alice"}]}}
+  (let [deltas [{[:users] [{:view-sig [:users] :insert-deltas [{:id 1 :name "Bob"} {:id 2 :name "Alice"}]}]}
+                {[:users] [{:view-sig [:users] :insert-deltas [{:id 3 :name "Jack"} {:id 4 :name "Jill"}]}]}]
+        ;; This is just more obvious than writing some convulated fn to dig out the view-sigs.
+        sent-deltas [{[:users] [{:insert-deltas [{:id 1 :name "Bob"} {:id 2 :name "Alice"}]}]}
+                     {[:users] [{:insert-deltas [{:id 3 :name "Jack"} {:id 4 :name "Jill"}]}]}]
         send-fn #(do (is (#{1 2} %1))
-                     (is (= %2 :views.deltas))
-                     (is (= %3 sent-delta)))
+                     (is (= :views.deltas %2))
+                     (is (= sent-deltas %3)))
         base-subbed-views (BaseSubscribedViews. (assoc view-config-fixture :send-fn send-fn))]
     (add-subscription! [:users] vf/templates 1 default-ns)
+    (broadcast-deltas base-subbed-views deltas nil)))
+
+(deftest deltas-are-post-processed
+  (let [templates   (assoc-in vf/templates [:users :post-fn] (fn [d] (update-in d [:id] #(Integer. %))))
+        deltas      [{[:users] [{:view-sig [:users] :insert-deltas [{:id "1" :name "Bob"}]}]}]
+        sent-deltas [{[:users] [{:insert-deltas [{:id "1" :name "Bob"}]}]}]
+        send-fn (fn [_ _ deltas-out]
+                  (is (= (:id (first (:insert-deltas (first (get (first deltas-out) [:users])))))
+                         1)))
+        base-subbed-views (BaseSubscribedViews. (assoc view-config-fixture :send-fn send-fn :templates templates))]
+    (add-subscription! [:users] templates 1 default-ns)
     (broadcast-deltas base-subbed-views deltas nil)))

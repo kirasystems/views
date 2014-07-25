@@ -2,6 +2,7 @@
   (:require
    [clojure.string :refer [split]]
    [clojure.java.jdbc :as j]
+   [clojure.tools.logging :refer [debug]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
    [views.db.load :as vdbl]

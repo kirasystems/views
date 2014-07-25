@@ -33,10 +33,10 @@
   (let [view-sig     [:user-posts (:id @vf/user-fixture)]
         sub-to-it    (vs/add-subscription! view-sig vf/templates (:id @vf/user-fixture))
         posted       (first (vdb/vexec! test-config (vf/insert-post-tmpl (:id @vf/user-fixture) "title" "body")))
-        delta-vs     (ffirst @received-deltas)
-        insert-delta (-> @received-deltas first second first :insert-deltas first)]
+        delta-vs     (ffirst (first @received-deltas))
+        insert-delta (-> @received-deltas ffirst second first :insert-deltas first)]
 
-    (is (= (ffirst @received-deltas) view-sig))
+    (is (= (ffirst (first @received-deltas)) view-sig))
     (is (= (:name insert-delta) (:name @vf/user-fixture)))
     (is (= (:body insert-delta) (:body posted)))
     (is (= (:title insert-delta) (:title posted)))))
@@ -47,10 +47,10 @@
         posted       (first (vdb/with-view-transaction
                               [tc test-config]
                               (vdb/vexec! tc (vf/insert-post-tmpl (:id @vf/user-fixture) "title" "body"))))
-        delta-vs     (ffirst @received-deltas)
-        insert-delta (-> @received-deltas first second first :insert-deltas first)]
+        delta-vs     (ffirst (first @received-deltas))
+        insert-delta (-> @received-deltas ffirst second first :insert-deltas first)]
 
-    (is (= (ffirst @received-deltas) view-sig))
+    (is (= (ffirst (first @received-deltas)) view-sig))
     (is (= (:name insert-delta) (:name @vf/user-fixture)))
     (is (= (:body insert-delta) (:body posted)))
     (is (= (:title insert-delta) (:title posted)))))
