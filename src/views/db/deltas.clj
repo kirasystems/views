@@ -220,11 +220,11 @@
    refresh-only-views))
 
 (defn format-deltas
-  "Removes extraneous data from view delta response collections."
+  "Removes extraneous data from view delta response collections.
+  TODO: Is there only one delta pack per view-sig here?"
   [views-with-deltas]
-  (->> views-with-deltas
-       (map #(select-keys % [:view-sig :delete-deltas :insert-deltas :refresh-set]))
-       (group-by :view-sig)))
+  (reduce #(update-in %1 [(:view-sig %2)] (fnil conj []) (select-keys %2 [:delete-deltas :insert-deltas :refresh-set]))
+          {} views-with-deltas))
 
 (defn do-view-transaction
   "Takes the following arguments:

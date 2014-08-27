@@ -1,4 +1,4 @@
-(defproject views "0.2.0"
+(defproject views "0.3.0-SNAPSHOT"
   :description "You underestimate the power of the SQL side"
 
   :url "https://github.com/diligenceengine/views"

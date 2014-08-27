@@ -1,53 +1,27 @@
 (ns views.db.core
-  (:import
-   [java.sql SQLException])
   (:require
    [clojure.java.jdbc :as j]
    [clojure.tools.logging :refer [debug]]
    [views.db.deltas :as vd]
+   [views.db.util :refer [with-retry retry-on-transaction-failure]]
    [views.subscribed-views :refer [subscribed-views broadcast-deltas]]))
 
-;;
-;; Need to catch this and retry:
-;; java.sql.SQLException: ERROR: could not serialize access due to concurrent update
-;;
-(defn get-nested-exceptions*
-  [exceptions e]
-  (if-let [next-e (.getNextException e)]
-    (recur (conj exceptions next-e) next-e)
-    exceptions))
-
-(defn get-nested-exceptions
-  [e]
-  (get-nested-exceptions* [e] e))
-
-(defn do-transaction-fn-with-retries
-  [transaction-fn]
-  (try
-    (transaction-fn)
-    (catch SQLException e
-      ;; http://www.postgresql.org/docs/9.2/static/errcodes-appendix.html
-      (debug "Caught exception with error code: " (.getSQLState e))
-      (debug "Exception message: " (.getMessage e))
-      ;; (debug "stack trace message: " (.printStackTrace e))
-      (if (some #(= (.getSQLState %) "40001") (get-nested-exceptions e))
-        (do-transaction-fn-with-retries transaction-fn) ;; try it again
-        (throw e))))) ;; otherwise rethrow
-
 (defmacro with-view-transaction
+  "Like with-db-transaction, but operates with views. If you want to use a
+  standard jdbc function, the transcation database map is accessible with
+  (:db vt) where vt is the bound view transaction."
   [binding & forms]
   (let [tvar (first binding), vc (second binding)]
     `(if (:deltas ~vc) ;; check if we are in a nested transaction
        (let [~tvar ~vc] ~@forms)
-       (do-transaction-fn-with-retries
-         (fn []
-           (let [base-subscribed-views# (:base-subscribed-views ~vc)
-                 deltas#  (atom [])
-                 result#  (j/with-db-transaction [t# (:db ~vc) :isolation :serializable]
-                            (let [~tvar (assoc ~vc :deltas deltas# :db t#)]
-                              ~@forms))]
-             (broadcast-deltas base-subscribed-views# @deltas# (:namespace ~vc))
-             result#))))))
+       (let [base-subscribed-views# (:base-subscribed-views ~vc)
+             deltas#  (atom [])
+             result#  (with-retry
+                        (j/with-db-transaction [t# (:db ~vc) :isolation :serializable]
+                          (let [~tvar (assoc ~vc :deltas deltas# :db t#)]
+                            ~@forms)))]
+         (broadcast-deltas base-subscribed-views# @deltas# (:namespace ~vc))
+         result#))))
 
 (defn vexec!
   "Used to perform arbitrary insert/update/delete actions on the database,
@@ -77,6 +51,6 @@
       (let [{:keys [new-deltas result-set]} (transaction-fn)]
         (swap! deltas #(conj % new-deltas))
         result-set)
-      (let [{:keys [new-deltas result-set]} (do-transaction-fn-with-retries transaction-fn)]
+      (let [{:keys [new-deltas result-set]} (retry-on-transaction-failure transaction-fn)]
         (broadcast-deltas base-subscribed-views [new-deltas] namespace)
         result-set))))

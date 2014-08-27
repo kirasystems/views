@@ -1,8 +1,8 @@
 (ns views.all-tests
   (:require
    [clojure.test :refer [run-tests]]
-   [views.subscriptions-test]
    [views.base-subscribed-views-test]
+   [views.persistence.memory-test]
    [views.db.core-test]
    [views.db.deltas-test]
    [views.db.checks-test] ; STILL SPECULATIVE
@@ -11,8 +11,8 @@
 
 (defn run-all-tests
   []
-  (run-tests 'views.subscriptions-test
-             'views.base-subscribed-views-test
+  (run-tests 'views.base-subscribed-views-test
+             'views.persistence.memory-test
              'views.db.core-test
              'views.db.deltas-test
              'views.db.checks-test
