@@ -25,18 +25,17 @@ This will create a role `views_user` and a database owned by that user called `v
 
 (You can change the database settings if you'd like by editing that file and checking the config in `test/views/fixtures.clj`.)
 
-Then, to run all tests in the repl:
+Then, to run all tests:
 
-```clojure
-user=> (require '[views.all-tests :as at])
-user=> (at/run-all-tests)
+```bash
+$ lein with-profile test test
 ```
 
 ## License
 
 Copyright © 2014 DiligenceEngine
 
-Authors Dave Della Costa (https://github.com/ddellacosta) and Alex Hudek (https://github.com/akhudek)
+Authors Dave Della Costa (https://github.com/ddellacosta) and Alexander Hudek (https://github.com/akhudek)
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
