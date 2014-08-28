@@ -1,7 +1,7 @@
 (ns views.persistence.core)
 
 (defprotocol IPersistence
-  (subscribe! [this db templates namespace view-sig subscriber-key]
+  (subscribe! [this templates namespace view-sig subscriber-key]
     "Subscribes a subscriber with subscriber-key to a view with signature
      view-sig. Templates is a map of all defined view templates and db
      is a jdbc transcation handle for the database from which initial

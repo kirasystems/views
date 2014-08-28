@@ -35,7 +35,7 @@
 (deftype ViewsMemoryPersistence [subbed-views]
   IPersistence
   (subscribe!
-    [this db templates namespace view-sig subscriber-key]
+    [this templates namespace view-sig subscriber-key]
     (let [sv (swap! subbed-views (fn [sv] (update-in sv [namespace] ns-subscribe! view-sig templates subscriber-key)))]
       (get-in sv [namespace view-sig :view-data])))
 

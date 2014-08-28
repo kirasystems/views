@@ -7,7 +7,7 @@
 
 (deftest memory-persistence
   (let [p  (new-memory-persistence)
-        vd (subscribe! p vf/db vf/templates :ns [:users] 1)]
+        vd (subscribe! p vf/templates :ns [:users] 1)]
     ;; This sort of test isn't great as it depends on the internal
     ;; structure unrlated to memory persistence.
     (is (= vd
@@ -18,7 +18,7 @@
            {[:users] #{1}}))
 
     ;; Subsequent calls return same vd.
-    (is (= (subscribe! p vf/db vf/templates :ns [:users] 3)
+    (is (= (subscribe! p vf/templates :ns [:users] 3)
            vd))
 
     ;; And subscription is correct.
@@ -30,12 +30,12 @@
            {}))
 
     ;; Duplicate subscription is ignored.
-    (subscribe! p vf/db vf/templates :ns [:users] 3)
+    (subscribe! p vf/templates :ns [:users] 3)
     (is (= (subscriptions p :ns [[:users]])
            {[:users] #{1 3}}))
 
     ;; We can subscribe to multiple views.
-    (subscribe! p vf/db vf/templates :ns [:user-posts 1] 5)
+    (subscribe! p vf/templates :ns [:user-posts 1] 5)
     (is (= (subscriptions p :ns [[:users] [:user-posts 1]])
            {[:users]      #{1 3}
             [:user-posts 1] #{5}}))
@@ -53,8 +53,8 @@
            [[:user-posts 1]]))
 
     ;; Unsubscribe all works.
-    (subscribe! p vf/db vf/templates :ns [:users] 7)
-    (subscribe! p vf/db vf/templates :ns [:users] 5)
+    (subscribe! p vf/templates :ns [:users] 7)
+    (subscribe! p vf/templates :ns [:users] 5)
     (unsubscribe-all! p :ns 5)
     (is (= (subscriptions p :ns [[:users] [:user-posts 1]])
            {[:users] #{7}}))))

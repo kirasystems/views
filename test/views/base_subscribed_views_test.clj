@@ -64,7 +64,7 @@
     (subscribe-views base-subbed-views {:subscriber-key 1 :views [[:users] [:user-posts 1]]})
     (Thread/sleep 10)
     (is (= (subscriptions (:persistence config) bsv/default-ns [[:users] [:user-posts 1]])
-           {[:users] #{1}}))
+           {[:users] #{1}, [:user-posts 1] #{1}}))
     (disconnect base-subbed-views {:subscriber-key 1})
     (is (= (subscriptions (:persistence config) bsv/default-ns [[:users] [:user-posts 1]])
            {}))))
@@ -93,7 +93,7 @@
                      (is (= sent-deltas %3))
                      (swap! sent conj [%1 %2 %3]))
         base-subbed-views (BaseSubscribedViews. (assoc config :send-fn send-fn))]
-    (subscribe! (:persistence config) vf/db vf/templates bsv/default-ns [:users] 1)
+    (subscribe! (:persistence config) vf/templates bsv/default-ns [:users] 1)
     (broadcast-deltas base-subbed-views deltas nil)
     (is (= 1 (count @sent)))
     (is (= 1 (ffirst @sent)))
@@ -111,7 +111,7 @@
                              1))
                       (swap! sent conj [a b deltas-out]))
         base-subbed-views (BaseSubscribedViews. (assoc config :send-fn send-fn :templates templates))]
-    (subscribe! (:persistence config) vf/db vf/templates bsv/default-ns [:users] 1)
+    (subscribe! (:persistence config) vf/templates bsv/default-ns [:users] 1)
     (Thread/sleep 10)
     (broadcast-deltas base-subbed-views deltas nil)
     (is (= 1 (count @sent)))
@@ -131,7 +131,7 @@
                              1))
                       (swap! sent conj [a b deltas-out]))
         base-subbed-views (BaseSubscribedViews. (assoc config :send-fn send-fn :templates templates))]
-    (subscribe! (:persistence config) vf/db vf/templates bsv/default-ns [:users] 1)
+    (subscribe! (:persistence config) vf/templates bsv/default-ns [:users] 1)
     (Thread/sleep 10)
     (broadcast-deltas base-subbed-views deltas nil)
     (is (= 1 (count @sent)))

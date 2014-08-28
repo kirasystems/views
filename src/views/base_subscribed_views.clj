@@ -34,10 +34,10 @@
 (defn subscribe-and-compute
   "Subscribe a view and return the initial values."
   [db persistence templates vs namespace subscriber-key]
-  (with-retry
-    (j/with-db-transaction [t db :isolation :serializable]
-      (let [view-data (persist/subscribe! persistence t templates namespace vs subscriber-key)]
-        (initial-view t vs templates (:view view-data))))))
+  (let [view-data (persist/subscribe! persistence templates namespace vs subscriber-key)]
+    (with-retry
+      (j/with-db-transaction [t db :isolation :serializable]
+          (initial-view t vs templates (:view view-data))))))
 
 ;; Deltas look like:
 ;; [{view-sig1 delta, view-sig2 delta, ...} {view-sig3 delta, ...}]
