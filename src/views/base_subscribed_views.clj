@@ -97,7 +97,7 @@
 (defn post-process-delta-map
   [post-fn delta-map]
   (if-let [rset (:refresh-set delta-map)]
-    {:refresh-set (mapv post-fn rset)}
+    delta-map
     (reduce #(assoc %1 %2 (map post-fn (get delta-map %2))) {} (keys delta-map))))
 
 (defn post-process-deltas
