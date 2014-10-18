@@ -27,9 +27,9 @@
 
 (defn init!
   [{:keys [base-subscribed-views] :as conf} client-chan]
-  (let [subs        (chan)
-        unsubs      (chan)
-        control     (chan)
+  (let [subs        (chan 200)
+        unsubs      (chan 200)
+        control     (chan 200)
         disconnects (filter< #(= :disconnect (:body %)) control)]
     (sub client-chan :views.subscribe subs)
     (sub client-chan :views.unsubscribe unsubs)
