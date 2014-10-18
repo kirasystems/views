@@ -58,10 +58,10 @@
           view-sigs      (view-filter msg (view-sig-fn* view-sig-fn msg) templates {:unsafe? unsafe?})] ; this is where security comes in.
       (debug "Subscribing views: " view-sigs " for subscriber " subscriber-key ", in namespace " namespace)
       (when (seq view-sigs)
-        (thread
           (doseq [vs view-sigs]
-            (let [iv (subscribe-and-compute db persistence templates vs namespace subscriber-key)]
-              (send-fn* send-fn subscriber-key :views.init iv)))))))
+            (thread
+              (let [iv (subscribe-and-compute db persistence templates vs namespace subscriber-key)]
+                (send-fn* send-fn subscriber-key :views.init iv)))))))
 
   (unsubscribe-views
     [this msg]
