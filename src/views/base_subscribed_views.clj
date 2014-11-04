@@ -7,7 +7,12 @@
    [views.db.util :refer [with-retry]]
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.core.async :refer [put! <! go thread]]
-   [clojure.java.jdbc :as j]))
+   [clojure.java.jdbc :as j]
+
+   ;; Metrics
+   [views.riemann :refer [rclient]]
+   [riemann.client :refer [send-event]]
+   ))
 
 (def default-ns :default-ns)
 
@@ -60,8 +65,10 @@
       (when (seq view-sigs)
           (doseq [vs view-sigs]
             (thread
-              (let [iv (subscribe-and-compute db persistence templates vs namespace subscriber-key)]
-                (send-fn* send-fn subscriber-key :views.init iv)))))))
+              (let [iv (subscribe-and-compute db persistence templates vs namespace subscriber-key)
+                    start  (System/currentTimeMillis)]
+                (send-fn* send-fn subscriber-key :views.init iv)
+                (send-event rclient {:service "subscription-init-time" :metric (- (System/currentTimeMillis) start)})))))))
 
   (unsubscribe-views
     [this msg]
@@ -140,7 +147,9 @@
 (defn send-deltas
   "Send deltas out to subscribers."
   [deltas subs namespace {:keys [send-fn templates] :as config}]
-  (let [deltas (mapv #(post-process-deltas % templates) (flatten-deltas deltas))]
+  (let [deltas (mapv #(post-process-deltas % templates) (flatten-deltas deltas))
+        start  (System/currentTimeMillis)]
     (doseq [[sk deltas*] (subscriber-deltas subs deltas)]
       (debug "Sending deltas " deltas* " to subscriber " sk)
-      (send-fn* send-fn sk :views.deltas deltas*))))
+      (send-fn* send-fn sk :views.deltas deltas*))
+    (send-event rclient {:service "delta-send-time" :metric (- (System/currentTimeMillis) start)})))

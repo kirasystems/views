@@ -15,7 +15,11 @@
                  [org.postgresql/postgresql "9.2-1003-jdbc4"]
                  [clj-logging-config "1.9.10"]
                  [zip-visit "1.0.2"]
-                 [pjstadig/humane-test-output "0.6.0"]]
+                 [pjstadig/humane-test-output "0.6.0"]
+
+                 ;; Metrics
+                 [riemann-clojure-client "0.2.11"]
+                 ]
 
   :profiles {:test {:dependencies [[org.clojure/tools.nrepl "0.2.3"]
                                    [environ "0.4.0"]
