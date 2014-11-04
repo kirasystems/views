@@ -6,7 +6,7 @@
    [views.db.load :refer [initial-view]]
    [views.db.util :refer [with-retry]]
    [clojure.tools.logging :refer [debug info warn error]]
-   [clojure.core.async :refer [put! <! go thread]]
+   [clojure.core.async :refer [thread]]
    [clojure.java.jdbc :as j]))
 
 (def default-ns :default-ns)
