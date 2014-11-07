@@ -34,8 +34,8 @@
         (try
           (let [disc (<! disconnects)]
             (debug "Disconnecting (in router): " disc)
-            (disconnect subscribed-views disc)
-            (catch Exception e (log-exception "disconnect" e)))))))
+            (disconnect subscribed-views disc))
+          (catch Exception e (log-exception "disconnect" e))))))
 
 (defn init!
   [{:keys [base-subscribed-views] :as conf} client-chan]
