@@ -9,7 +9,7 @@
 ;; java.sql.SQLException: ERROR: could not serialize access due to concurrent update
 ;;
 (defn get-nested-exceptions*
-  [exceptions e]
+  [exceptions ^SQLException e]
   (if-let [next-e (.getNextException e)]
     (recur (conj exceptions next-e) next-e)
     exceptions))
@@ -18,6 +18,11 @@
   "Return the current exception and all nested exceptions as a vector."
   [e]
   (get-nested-exceptions* [e] e))
+
+(defn serialization-error?
+  "True if e is a serialization error."
+  [^SQLException e]
+  (boolean (some #(= (.getSQLState ^SQLException %) "40001") (get-nested-exceptions e))))
 
 ;; TODO: update to avoid stack overflow.
 (defn retry-on-transaction-failure
@@ -31,7 +36,7 @@
       (debug "Exception message: " (.getMessage e))
 
       ;; (debug "stack trace message: " (.printStackTrace e))
-      (if (some #(= (.getSQLState %) "40001") (get-nested-exceptions e))
+      (if (serialization-error? e)
         (retry-on-transaction-failure transaction-fn) ;; try it again
         (throw e))))) ;; otherwise rethrow
 
@@ -42,7 +47,7 @@
     (retry-on-transaction-failure tfn#)))
 
 (defn log-exception
-  [e]
+  [^Exception e]
   (error "views internal"
          (str
            "e: "      e
@@ -50,6 +55,11 @@
            " trace: " (with-out-str (print-stack-trace e)))))
 
 (defn safe-map
-  "A non-lazy map that skips any results that throw exeptions."
+  "A non-lazy map that skips any results that throw exeptions other than SQL
+  serialization errors."
   [f items]
-  (reduce #(try (conj %1 (f %2)) (catch Exception e %1)) [] items))
+  (reduce #(try (conj %1 (f %2))
+                (catch SQLException e (if (serialization-error? e) (throw e) %1))
+                (catch Exception e %1))
+          []
+          items))

@@ -1,4 +1,5 @@
 (ns views.db.deltas
+  (:import (java.sql SQLException))
   (:require
    [clojure.string :refer [split]]
    [clojure.java.jdbc :as j]
@@ -8,7 +9,7 @@
    [views.db.load :as vdbl]
    [views.db.checks :as vc]
    [views.db.honeysql :as vh]
-   [views.db.util :refer [safe-map log-exception]]))
+   [views.db.util :refer [safe-map log-exception serialization-error?]]))
 
 ;;
 ;; Terminology and data structures used throughout this code
@@ -218,9 +219,10 @@
        (try
          (let [refresh-set (get (vdbl/initial-view db view-sig templates view) view-sig)]
            (update-in d [view-sig] (update-deltas-with-refresh-set refresh-set)))
-         (catch Exception e ;; ignore any failed view deltas
-           (log-exception e)
-           d)))
+         ;; allow serialization errors
+         (catch SQLException e (if (serialization-error? e) (throw e) d))
+         ;; ignore any failed view deltas
+         (catch Exception e (log-exception e) d)))
      deltas
      refresh-only-views))
 
