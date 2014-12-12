@@ -21,8 +21,12 @@
    the template config map, and the view-map itself.
    and returns a result-set for the new-views with post-fn functions applied to the data."
   [db new-view templates view-map]
-  (->> view-map
-       (view-query db)
-       (into [])
-       (post-process-result-set new-view templates)
-       (hash-map new-view)))
+  (try
+    (->> view-map
+         (view-query db)
+         (into [])
+         (post-process-result-set new-view templates)
+         (hash-map new-view))
+    (catch Exception e
+      (warn (.getMessage e))
+      (warn "Broken view sig: " (pr-str new-view)))))
