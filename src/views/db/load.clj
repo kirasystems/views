@@ -1,4 +1,6 @@
 (ns views.db.load
+  (:import
+   [java.sql SQLException])
   (:require
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.java.jdbc :as j]
@@ -27,6 +29,6 @@
          (into [])
          (post-process-result-set new-view templates)
          (hash-map new-view))
-    (catch Exception e
+    (catch SQLException e
       (warn (.getMessage e))
       (warn "Broken view sig: " (pr-str new-view)))))
