@@ -30,12 +30,7 @@
          (into [])
          (post-process-result-set new-view templates)
          (hash-map new-view))
-    (catch SQLException e
-      (if (serialization-error? e)
-        (throw e)
-        (do
-          (warn "Broken view sig: " (pr-str new-view))
-          (log-exception e))))
     (catch Exception e
       (error "when computing initial-view for" new-view)
-      (log-exception e))))
+      (log-exception e)
+      (throw e))))

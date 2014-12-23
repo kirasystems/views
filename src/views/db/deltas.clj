@@ -3,7 +3,7 @@
   (:require
    [clojure.string :refer [split]]
    [clojure.java.jdbc :as j]
-   [clojure.tools.logging :refer [debug]]
+   [clojure.tools.logging :refer [debug error]]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
    [views.db.load :as vdbl]
@@ -219,10 +219,11 @@
        (try
          (let [refresh-set (get (vdbl/initial-view db view-sig templates view) view-sig)]
            (update-in d [view-sig] (update-deltas-with-refresh-set refresh-set)))
-         ;; allow serialization errors
-         (catch SQLException e (if (serialization-error? e) (throw e) d))
-         ;; ignore any failed view deltas
-         (catch Exception e (log-exception e) d)))
+         ;; report bad view-sig on error
+         (catch Exception e
+           (error "error refreshing view" view-sig)
+           (log-exception e)
+           (throw e))))
      deltas
      refresh-only-views))
 

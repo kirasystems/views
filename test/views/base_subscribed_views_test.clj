@@ -33,7 +33,7 @@
     (is (= (subscriptions (:persistence config) bsv/default-ns [[:users]])
            {[:users] #{1}}))
     ;; Verify sends occured.
-    (is (= @sent #{[1 :views.init {[:users] []}]}))))
+    (is (= #{[1 :views.init {[:users] []}]} @sent))))
 
 ;; This test illustrates a slight timing issue. Because view subscriptions
 ;; use threads, an unsubscription that follows a subscription too closely
