@@ -4,7 +4,7 @@
    [views.subscribed-views :refer [ISubscribedViews]]
    [views.filters :refer [view-filter]]
    [views.db.load :refer [initial-view]]
-   [views.db.util :refer [with-retry]]
+   [views.db.util :refer [with-retry log-exception]]
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.core.async :refer [thread]]
    [clojure.java.jdbc :as j]))
@@ -60,8 +60,12 @@
       (when (seq view-sigs)
           (doseq [vs view-sigs]
             (thread
-              (let [iv (subscribe-and-compute db persistence templates vs namespace subscriber-key)]
-                (send-fn* send-fn subscriber-key :views.init iv)))))))
+              (try
+                (let [iv (subscribe-and-compute db persistence templates vs namespace subscriber-key)]
+                  (send-fn* send-fn subscriber-key :views.init iv))
+                (catch Exception e
+                  (error "when subscribing to" vs)
+                  (log-exception e))))))))
 
   (unsubscribe-views
     [this msg]

@@ -4,7 +4,8 @@
   (:require
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.java.jdbc :as j]
-   [honeysql.core :as hsql]))
+   [honeysql.core :as hsql]
+   [views.db.util :refer [safe-map log-exception serialization-error?]]))
 
 (defn view-query
   "Takes db and query-fn (compiled HoneySQL hash-map)
@@ -30,5 +31,11 @@
          (post-process-result-set new-view templates)
          (hash-map new-view))
     (catch SQLException e
-      (warn (.getMessage e))
-      (warn "Broken view sig: " (pr-str new-view)))))
+      (if (serialization-error? e)
+        (throw e)
+        (do
+          (warn "Broken view sig: " (pr-str new-view))
+          (log-exception e))))
+    (catch Exception e
+      (error "when computing initial-view for" new-view)
+      (log-exception e))))
