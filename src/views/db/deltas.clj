@@ -9,7 +9,7 @@
    [views.db.load :as vdbl]
    [views.db.checks :as vc]
    [views.db.honeysql :as vh]
-   [views.db.util :refer [safe-map log-exception serialization-error?]]))
+   [views.db.util :refer [log-exception serialization-error?]]))
 
 ;;
 ;; Terminology and data structures used throughout this code
@@ -116,11 +116,11 @@
 
 (defn compute-insert-delete-deltas-for-views
   [schema db views table record]
-  (safe-map #(compute-delete-deltas-for-insert schema db % table record) views))
+  (mapv #(compute-delete-deltas-for-insert schema db % table record) views))
 
 (defn compute-insert-insert-deltas-for-views
   [schema db views table record]
-  (safe-map #(compute-insert-deltas-for-insert schema db % table record) views))
+  (mapv #(compute-insert-deltas-for-insert schema db % table record) views))
 
 (defn compute-deltas-for-insert
   "This takes a *single* insert and a view, applies the insert and computes
@@ -171,16 +171,16 @@
 (defn- update-and-append-deltas!
   "Handles update and calculation of delete (before update) and insert (after update) deltas."
   [db views action table pkey]
-  (let [views-pre (safe-map #(calculate-delete-deltas db %) views)
+  (let [views-pre (mapv #(calculate-delete-deltas db %) views)
         pkey-val  (get-action-row-key db pkey table action)
         update    (j/execute! db (hsql/format action))]
-    {:views-with-deltas (safe-map #(calculate-insert-deltas db action [:= pkey pkey-val] %) views-pre)
+    {:views-with-deltas (mapv #(calculate-insert-deltas db action [:= pkey pkey-val] %) views-pre)
      :result-set        update}))
 
 (defn- delete-and-append-deltas!
   "Handles deletion and calculation of delete (before update) delta."
   [db views action table pkey]
-  (let [views-pre (safe-map #(calculate-delete-deltas db %) views)]
+  (let [views-pre (mapv #(calculate-delete-deltas db %) views)]
     {:views-with-deltas views-pre
      :result-set        (j/execute! db (hsql/format action))}))
 

@@ -5,7 +5,7 @@
    [clojure.tools.logging :refer [debug info warn error]]
    [clojure.java.jdbc :as j]
    [honeysql.core :as hsql]
-   [views.db.util :refer [safe-map log-exception serialization-error?]]))
+   [views.db.util :refer [log-exception serialization-error?]]))
 
 (defn view-query
   "Takes db and query-fn (compiled HoneySQL hash-map)

@@ -53,13 +53,3 @@
            "e: "      e
            " msg: "   (.getMessage e)
            " trace: " (with-out-str (print-stack-trace e)))))
-
-(defn safe-map
-  "A non-lazy map that skips any results that throw exeptions other than SQL
-  serialization errors."
-  [f items]
-  (reduce #(try (conj %1 (f %2))
-                (catch SQLException e (if (serialization-error? e) (throw e) %1))
-                (catch Exception e %1))
-          []
-          items))
