@@ -85,10 +85,15 @@
 
 (defn- calculate-delete-deltas
   [db view-map]
-  (->> (:delete-deltas-map view-map)
-       hsql/format
-       (j/query db)
-       (assoc view-map :delete-deltas)))
+  (try
+    (->> (:delete-deltas-map view-map)
+         hsql/format
+         (j/query db)
+         (assoc view-map :delete-deltas))
+    (catch Exception e
+      (error "computing delete deltas for" view-map)
+      (log-exception e)
+      (throw e))))
 
 (defn compute-delete-deltas-for-insert
   "Computes and returns a sequence of delete deltas for a single view and insert."

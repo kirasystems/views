@@ -7,8 +7,10 @@
 (def table-clauses
   [:from :insert-into :update :delete-from :join :left-join :right-join])
 
+;; This list doesn't support custom operators. Is there something else we can do?
 (def pred-ops
-  #{:= :< :> :<> :>= :<= :in :between :match :ltree-match :and :or :not=})
+  #{:= :< :> :<> :>= :<= :in :between :match :ltree-match :and :or :not= :like :xor :regexp :not-in :not-like
+    :!= :is :is-not})
 
 (defn process-complex-clause
   [tables clause]
