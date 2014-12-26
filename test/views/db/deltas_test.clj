@@ -10,7 +10,7 @@
 (defn dvt-helper
   ([all-views action] (dvt-helper all-views action vf/templates))
   ([all-views action templates]
-     (vd/do-view-transaction vschema vf/db all-views action templates)))
+     (vd/do-view-transaction vf/persistence :default-ns vf/vschema vf/db all-views action templates)))
 
 (use-fixtures :each (vf/database-fixtures!))
 

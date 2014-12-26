@@ -49,6 +49,14 @@
     (swap! subbed-views
            (fn [sv] (update-in sv [namespace] ns-unsubscribe-all! subscriber-key))))
 
+  (update-hash!
+    [this namespace view-sig hash-value]
+    (swap! subbed-views assoc-in [namespace view-sig :hash] hash-value))
+
+  (view-hash
+    [this namespace view-sig]
+    (get-in @subbed-views [namespace view-sig :hash]))
+
   (view-data [this namespace table]
     ;; We don't yet use table name as an optimization here.
     (map :view-data (vals (get @subbed-views namespace))))

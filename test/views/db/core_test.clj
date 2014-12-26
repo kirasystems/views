@@ -17,6 +17,8 @@
   (subscribed-views [this namespace]
     (persist/view-data @memory default-ns nil))
 
+  (persistence [this] @memory)
+
   (broadcast-deltas [this new-deltas namespace]
     (reset! received-deltas new-deltas)))
 

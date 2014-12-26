@@ -4,12 +4,14 @@
    [clojure.string :refer [split]]
    [clojure.java.jdbc :as j]
    [clojure.tools.logging :refer [debug error]]
+   [clojure.core.reducers :as r]
    [honeysql.core :as hsql]
    [honeysql.helpers :as hh]
    [views.db.load :as vdbl]
    [views.db.checks :as vc]
    [views.db.honeysql :as vh]
-   [views.db.util :refer [log-exception serialization-error?]]))
+   [views.db.util :refer [log-exception serialization-error?]]
+   [views.persistence.core :refer [view-hash update-hash!]]))
 
 ;;
 ;; Terminology and data structures used throughout this code
@@ -213,24 +215,66 @@
   [refresh-set]
   (fn [view-deltas]
     (if (coll? view-deltas)
-      (map #(assoc % :refresh-set refresh-set) view-deltas)
-      [{:refresh-set refresh-set}])))
+      (mapv #(merge % refresh-set) view-deltas)
+      [refresh-set])))
+
+(defn calculate-refresh-sets*
+  "Compute all the refresh views in parallel."
+  [db templates refresh-only-views]
+  (let [reducefn (fn ([] [])
+                     ([a b]
+                       (try
+                         (conj a {:view-sig    (:view-sig b)
+                                  :refresh-set (get (vdbl/initial-view db (:view-sig b) templates (:view b)) (:view-sig b))})
+                         (catch SQLException e
+                           (conj a {:view-sig (:view-sig b) :sql-exception e}))
+                         (catch Exception e
+                           (conj a {:view-sig (:view-sig b) :exception e})))))]
+    (r/fold 1 concat reducefn refresh-only-views)))
+
+(defn filter-by-hash
+  "Remove any views with hashes that haven't changed, else update the hash and keep the view."
+  [persistence namespace refresh-sets]
+  (filterv
+    (fn [rs]
+      (let [hash-value (hash (:refresh-set rs))]
+        (if (not= (view-hash persistence namespace (:view-sig rs)) hash-value)
+          (do (update-hash! persistence namespace (:view-sig rs) hash-value) true))))
+    refresh-sets))
+
+(defn first-serialization-error
+  [refresh-sets]
+  (some #(if-let [e (:sql-exception %)] (and (serialization-error? e) e)) refresh-sets))
+
+(defn some-exception
+  [rs]
+  (or (:sql-exception rs) (:exception rs)))
+
+;; Exceedingly ugly code.
+(defn look-for-exceptions
+  "Because exceptions in threads get buried, we have to look through the results to check for
+  serialization errors or other exceptions. We must bubble any serialization exception up."
+  [refresh-sets]
+  (if (some #(some-exception %) refresh-sets)
+    (if-let [e (first-serialization-error refresh-sets)]
+      (throw e)
+      (do
+        (doseq [rs refresh-sets :when (some-exception rs)]
+          (error "error computing refresh-set for" (:view-sig rs))
+          (when-let [e (some-exception rs)] (log-exception e)))
+        (throw (some some-exception refresh-sets))))
+    refresh-sets))
 
 (defn calculate-refresh-sets
   "For refresh-only views, calculates the refresh-set and adds it to the view's delta update collection."
-  [deltas db templates refresh-only-views]
-  (reduce
-     (fn [d {:keys [view-sig view] :as rov}]
-       (try
-         (let [refresh-set (get (vdbl/initial-view db view-sig templates view) view-sig)]
-           (update-in d [view-sig] (update-deltas-with-refresh-set refresh-set)))
-         ;; report bad view-sig on error
-         (catch Exception e
-           (error "error refreshing view" view-sig)
-           (log-exception e)
-           (throw e))))
-     deltas
-     refresh-only-views))
+  [persistence namespace deltas db templates refresh-only-views]
+  (let [refresh-sets (->> (calculate-refresh-sets* db templates refresh-only-views)
+                          look-for-exceptions
+                          (filter-by-hash persistence namespace))]
+    (reduce
+      (fn [d rs] (update-in d [(:view-sig rs)] (update-deltas-with-refresh-set rs)))
+      deltas
+      refresh-sets)))
 
 (defn format-deltas
   "Removes extraneous data from view delta response collections.
@@ -264,7 +308,7 @@
    The function returns a hash-map with :result-set and :new-deltas collection values.
    :new-deltas contains :insert-deltas, :delete-deltas, and :refresh-set values, as well
    as the original :view-sig the deltas apply to."
-  [schema db all-views action templates]
+  [persistence namespace schema db all-views action templates]
   (j/with-db-transaction [t db :isolation :serializable]
     (let [filtered-views     (filterv #(vc/have-overlapping-tables? action (:view %)) all-views)
           {full-refresh-views true normal-views nil} (group-by :refresh-only? filtered-views)
@@ -272,5 +316,5 @@
           table              (-> action vh/extract-tables ffirst)
           pkey               (get-primary-key schema table)
           {:keys [views-with-deltas result-set]} (perform-action-and-return-deltas schema t need-deltas action table pkey)
-          deltas             (calculate-refresh-sets (format-deltas views-with-deltas) t templates full-refresh-views)]
+          deltas             (calculate-refresh-sets persistence namespace (format-deltas views-with-deltas) t templates full-refresh-views)]
       {:new-deltas deltas :result-set result-set})))

@@ -17,6 +17,12 @@
     "Unsubscribes the subscriber with key 'subscriber-key' from ALL views
     in namespace 'namespace'.")
 
+  (update-hash! [this namespace view-sig hash-value]
+    "Updates the data has for the view.")
+
+  (view-hash [this namespace view-sig]
+    "Returns the latest data has for the view.")
+
   (view-data [this namespace table-name]
     "Return all the view data that references a table name in a namespace.")
 

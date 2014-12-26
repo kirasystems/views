@@ -4,7 +4,7 @@
    [clojure.tools.logging :refer [debug]]
    [views.db.deltas :as vd]
    [views.db.util :refer [with-retry retry-on-transaction-failure]]
-   [views.subscribed-views :refer [subscribed-views broadcast-deltas]]))
+   [views.subscribed-views :refer [subscribed-views broadcast-deltas persistence]]))
 
 (defmacro with-view-transaction
   "Like with-db-transaction, but operates with views. If you want to use a
@@ -46,7 +46,7 @@
      - broadcast-deltas takes ... ."
   [{:keys [db schema base-subscribed-views templates namespace deltas] :as conf} action-map]
   (let [subbed-views    (subscribed-views base-subscribed-views namespace)
-        transaction-fn #(vd/do-view-transaction schema db subbed-views action-map templates)]
+        transaction-fn #(vd/do-view-transaction (persistence base-subscribed-views) namespace schema db subbed-views action-map templates)]
     (if deltas  ;; inside a transaction we just collect deltas and do not retry
       (let [{:keys [new-deltas result-set]} (transaction-fn)]
         (swap! deltas #(conj % new-deltas))

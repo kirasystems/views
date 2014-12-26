@@ -4,7 +4,8 @@
    [clojure.java.jdbc :as j]
    [honeysql.core :as hsql]
    [edl.core :refer [defschema]]
-   [clojure.data.generators :as dg]))
+   [clojure.data.generators :as dg]
+   [views.persistence.memory :refer [new-memory-persistence]]))
 
 (defn sql-ts
   ([ts] (java.sql.Timestamp. ts))
@@ -17,6 +18,8 @@
          :password    (get :views-test-ppassword e/env "password")})
 
 (defschema vschema db "public")
+
+(def persistence (new-memory-persistence))
 
 (defn clean-tables!
   [tables]

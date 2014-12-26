@@ -24,13 +24,8 @@
    the template config map, and the view-map itself.
    and returns a result-set for the new-views with post-fn functions applied to the data."
   [db new-view templates view-map]
-  (try
-    (->> view-map
-         (view-query db)
-         (into [])
-         (post-process-result-set new-view templates)
-         (hash-map new-view))
-    (catch Exception e
-      (error "when computing initial-view for" new-view)
-      (log-exception e)
-      (throw e))))
+  (->> view-map
+       (view-query db)
+       (into [])
+       (post-process-result-set new-view templates)
+       (hash-map new-view)))

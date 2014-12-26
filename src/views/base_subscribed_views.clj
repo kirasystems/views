@@ -85,9 +85,11 @@
       (persist/unsubscribe-all! persistence namespace subscriber-key)))
 
   ;;
-  ;; The two below functions get called by vexec!/with-view-transaction
+  ;; The below functions get called by vexec!/with-view-transaction
   ;;
+  (persistence [this] (:persistence config))
 
+  ;; Deprecate this? It's just a call to persistence.
   (subscribed-views [this namespace]
     ;; Table name optimization not yet worked through the library.
     (persist/view-data (:persistence config) namespace "fix-me"))
