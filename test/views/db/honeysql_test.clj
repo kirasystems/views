@@ -34,6 +34,30 @@
   (is (= (vh/extract-tables join-with-alias-test) #{[:foo] [:bar :b]}))
   (is (= (vh/extract-tables join-and-from-with-alias-test) #{[:foo :f] [:bar :b]})))
 
+(def cte-test
+  {:with [[:a {:select [:*] :from [:bar]}]]
+   :select [:*] :from [:foo]})
+
+(def from-subselect-test
+  {:select [:*] :from [[{:select [:*] :from [:foo]} :a]]})
+
+(def where-subselect-test
+  {:select [:*] :from [:foo] :where [:in :a {:select [:*] :from [:bar]}]})
+
+(def nested-where-subselect-test
+  {:select [:*] :from [:foo] :where [:and [:in :a {:select [:*] :from [:bar]}] [:in :a {:select [:*] :from [:baz]}]]})
+
+(deftest extracts-tables-from-full-refresh-specs
+  (is (= (vh/query-tables simple-test) #{:foo}))
+  (is (= (vh/query-tables insert-test) #{:foo}))
+  (is (= (vh/query-tables join-test) #{:foo :bar}))
+  (is (= (vh/query-tables join-with-alias-test) #{:foo :bar}))
+  (is (= (vh/query-tables join-and-from-with-alias-test) #{:foo :bar}))
+  (is (= (vh/query-tables cte-test) #{:foo :bar}))
+  (is (= (vh/query-tables from-subselect-test) #{:foo}))
+  (is (= (vh/query-tables where-subselect-test) #{:foo :bar}))
+  (is (= (vh/query-tables nested-where-subselect-test) #{:foo :bar :baz})))
+
 ;; Do we really need to test the new version?
 (deftest merges-where-clauses
   (is (= (vh/merge-where-clauses [:= :foo 1] [:= :bar 2])

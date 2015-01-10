@@ -15,13 +15,13 @@
 (defn process-complex-clause
   [tables clause]
   (reduce
-   #(if (coll? %2)
+    #(if (coll? %2)
       (if (some pred-ops [(first %2)])
         %1
         (conj %1 %2))
       (conj %1 [%2]))
-   tables
-   clause))
+    tables
+    clause))
 
 (defn extract-tables*
   [tables clause]
@@ -31,18 +31,80 @@
       (conj tables [clause]))
     tables))
 
-(defn with-op
-  "Takes a collection of things and returns either an nary op of them, or
-  the item in the collection if there is only one."
-  [op coll]
-  (if (> (count coll) 1) (into [op] coll) (first coll)))
-
 (defn extract-tables
   "Extracts a set of table vector from a HoneySQL spec hash-map.
    Each vector either contains a single table keyword, or the
    table keyword and an alias keyword."
   ([hh-spec] (extract-tables hh-spec table-clauses))
   ([hh-spec clauses] (reduce #(extract-tables* %1 (%2 hh-spec)) #{} clauses)))
+
+;; The following is used for full refresh views where we can have CTEs and
+;; subselects in play.
+
+(declare query-tables)
+
+(defn cte-tables
+  [query]
+  (mapcat #(query-tables (second %)) (:with query)))
+
+(defn isolate-tables
+  "Isolates tables from table definitions in from and join clauses."
+  [c]
+  (if (keyword? c) [c] (let [v (first c)] (if (map? v) (query-tables v) [v]))))
+
+(defn from-tables
+  [query]
+  (mapcat isolate-tables (:from query)))
+
+(defn every-second
+  [coll]
+  (map first (partition 2 coll)))
+
+(defn join-tables
+  [query k]
+  (mapcat isolate-tables (every-second (k query))))
+
+(defn collect-maps
+  [coll]
+  (let[maps  (filterv map? coll)
+       colls (filter #(and (coll? %) (not (map? %))) coll)]
+    (into maps (mapcat collect-maps colls))))
+
+(defn where-tables
+  "This search for subqueries in the where clause."
+  [query]
+  (mapcat query-tables (collect-maps (:where query))))
+
+(defn insert-tables
+  [query]
+  (if-let [v (:insert-into query)] [v] []))
+
+(defn update-tables
+  [query]
+  (if-let [v (:update query)] [v] []))
+
+(defn delete-tables
+  [query]
+  (if-let [v (:delete-from query)] [v] []))
+
+(defn query-tables
+  [query]
+  (set (concat
+         (cte-tables query)
+         (from-tables query)
+         (join-tables query :join)
+         (join-tables query :left-join)
+         (join-tables query :right-join)
+         (where-tables query)
+         (insert-tables query)
+         (update-tables query)
+         (delete-tables query))))
+
+(defn with-op
+  "Takes a collection of things and returns either an nary op of them, or
+  the item in the collection if there is only one."
+  [op coll]
+  (if (> (count coll) 1) (into [op] coll) (first coll)))
 
 (defn find-table-aliases
   "Returns the table alias for the supplied table."

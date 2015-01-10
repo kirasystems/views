@@ -38,9 +38,8 @@
 (defn have-overlapping-tables?
   "Takes two Honeysql hash-maps, one for action, one for view, and returns
    boolean value representing whether or not their set of tables intersect."
-  [action view]
-  (->> [action view]
-       (map (comp set #(map first %) vh/extract-tables))
-       (apply intersection)
-       seq
-       boolean))
+  [action view refresh?]
+  (let [a (set (map first (vh/extract-tables action)))]
+    (if refresh?
+      (boolean (seq (intersection a (vh/query-tables view))))
+      (boolean (seq (intersection a (set (map first (vh/extract-tables view)))))))))

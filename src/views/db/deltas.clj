@@ -310,7 +310,7 @@
    as the original :view-sig the deltas apply to."
   [persistence namespace schema db all-views action templates]
   (j/with-db-transaction [t db :isolation :serializable]
-    (let [filtered-views     (filterv #(vc/have-overlapping-tables? action (:view %)) all-views)
+    (let [filtered-views     (filterv #(vc/have-overlapping-tables? action (:view %) (:refresh-only? %)) all-views)
           {full-refresh-views true normal-views nil} (group-by :refresh-only? filtered-views)
           need-deltas        (map #(generate-view-delta-map % action) normal-views)
           table              (-> action vh/extract-tables ffirst)
