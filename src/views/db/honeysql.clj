@@ -65,10 +65,13 @@
   (mapcat isolate-tables (every-second (k query))))
 
 (defn collect-maps
-  [coll]
-  (let[maps  (filterv map? coll)
-       colls (filter #(and (coll? %) (not (map? %))) coll)]
-    (into maps (mapcat collect-maps colls))))
+  [wc]
+  (cond
+    (coll? wc) (let [maps  (filterv map? wc)
+                     colls (filter #(and (coll? %) (not (map? %))) wc)]
+                 (into maps (mapcat collect-maps colls)))
+    (map? wc)  [wc]
+    :else      []))
 
 (defn where-tables
   "This search for subqueries in the where clause."

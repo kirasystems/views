@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is run-tests]]
    [views.db.honeysql :as vh]
+   [honeysql.core :as hsql]
    [honeysql.helpers :as hh]))
 
 (def simple-test
@@ -47,6 +48,9 @@
 (def nested-where-subselect-test
   {:select [:*] :from [:foo] :where [:and [:in :a {:select [:*] :from [:bar]}] [:in :a {:select [:*] :from [:baz]}]]})
 
+(def sql-raw-test
+  {:select [:*] :from [:foo] :where (hsql/raw "bar=1")})
+
 (deftest extracts-tables-from-full-refresh-specs
   (is (= (vh/query-tables simple-test) #{:foo}))
   (is (= (vh/query-tables insert-test) #{:foo}))
@@ -56,7 +60,8 @@
   (is (= (vh/query-tables cte-test) #{:foo :bar}))
   (is (= (vh/query-tables from-subselect-test) #{:foo}))
   (is (= (vh/query-tables where-subselect-test) #{:foo :bar}))
-  (is (= (vh/query-tables nested-where-subselect-test) #{:foo :bar :baz})))
+  (is (= (vh/query-tables nested-where-subselect-test) #{:foo :bar :baz}))
+  (is (= (vh/query-tables sql-raw-test) #{:foo})))
 
 ;; Do we really need to test the new version?
 (deftest merges-where-clauses
