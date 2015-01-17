@@ -1,4 +1,4 @@
-(defproject views "0.5.2"
+(defproject views "1.0.0"
   :description "You underestimate the power of the SQL side"
 
   :url "https://github.com/diligenceengine/views"
@@ -15,6 +15,7 @@
                  [org.postgresql/postgresql "9.2-1003-jdbc4"]
                  [clj-logging-config "1.9.10"]
                  [zip-visit "1.0.2"]
+                 [prismatic/plumbing "0.3.5"]
                  [pjstadig/humane-test-output "0.6.0"]]
 
   :profiles {:test {:dependencies [[org.clojure/tools.nrepl "0.2.3"]
