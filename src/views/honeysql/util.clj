@@ -1,4 +1,4 @@
-(ns views.honey-sql.util
+(ns views.honeysql.util
   (:require
     [honeysql.core :as hsql]
     [honeysql.helpers :as hh]

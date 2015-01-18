@@ -1,7 +1,8 @@
 (ns views.core
   (:require
     [views.protocols :refer [IView id data relevant?]]
-    [plumbing.core :refer [swap-pair!]]))
+    [plumbing.core :refer [swap-pair!]]
+    [clojure.tools.logging :refer [debug]]))
 
 ;; The view-system data structure has this shape:
 ;;
@@ -27,9 +28,9 @@
 (defn subscribe!
   [view-system namespace view-id parameters subscriber-key]
   (if-let [view  (get-in @view-system [:views view-id])]
-    (let [vdata (data view namespace parameters)]
+    (let [vdata    (data view namespace parameters)]
       (swap! view-system subscribe-view! [namespace view-id parameters] subscriber-key (hash vdata))
-      ((get @view-system :send-fn) subscriber-key vdata))))
+      ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata]))))
 
 (defn remove-from-subscribers
   [view-system view-sig subscriber-key]
@@ -61,7 +62,7 @@
             hdata (hash vdata)]
         (when-not (= hdata (get-in @view-system [:hashes view-sig]))
           (doseq [s (get-in @view-system [:subscribers view-sig])]
-            ((:send-fn @view-system) s vdata))
+            ((:send-fn @view-system) s [[view-id parameters] vdata]))
           (swap! view-system assoc-in [:hashes view-sig] hdata))))))
 
 (defn subscribed-views
@@ -78,6 +79,7 @@
   "Given a collection of hints, find all dirty views."
   [view-system]
   (let [hints (pop-hints! view-system)]
+    (debug "refresh hints:" hints)
     (mapv #(refresh-view! view-system hints %) (subscribed-views @view-system))
     (swap! view-system assoc :last-update (System/currentTimeMillis))))
 
@@ -89,19 +91,30 @@
   [last-update min-refresh-interval]
   (Thread/sleep (max 0 (- min-refresh-interval (- (System/currentTimeMillis) last-update)))))
 
-(defn start-update-watcher!
+(defn update-watcher!
   "A single threaded view update mechanism."
   [view-system min-refresh-interval]
   (swap! view-system assoc :last-update 0)
-  (.start (Thread.  (fn [] (let [last-update (:last-update @view-system)]
-                             (if (can-refresh? last-update min-refresh-interval)
-                               (do (refresh-views! view-system) (recur))
-                               (do (wait last-update min-refresh-interval) (recur))))))))
+  (.start (Thread. (fn [] (let [last-update (:last-update @view-system)]
+                            (if (can-refresh? last-update min-refresh-interval)
+                              (refresh-views! view-system)
+                              (wait last-update min-refresh-interval))
+                            (recur))))))
+
+(defn hint
+  "Create a hint."
+  [namespace hint]
+  {:namespace namespace :hint hint})
 
 (defn add-hint!
   "Add a hint to the system."
-  [view-system namespace hint]
-  (swap! view-system update-in [:hints] (fnil conj #{}) {:namespace namespace :hint hint}))
+  [view-system hint]
+  (swap! view-system update-in [:hints] (fnil conj #{}) hint))
+
+(defn add-views!
+  "Add a collection of views to the system."
+  [view-system views]
+  (swap! view-system update-in [:views] (fnil into {}) (map vector (map id views) views)))
 
 (comment
   (defrecord SQLView [id query-fn]

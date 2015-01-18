@@ -1,5 +1,5 @@
 (defproject views "1.0.0"
-  :description "You underestimate the power of the SQL side"
+  :description "A view to the past helps navigate the future."
 
   :url "https://github.com/diligenceengine/views"
 
@@ -9,10 +9,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.logging "0.2.6"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
-                 [org.clojure/java.jdbc "0.3.3"]
                  [honeysql "0.4.3"]
-                 [edl "0.1.0"]
-                 [org.postgresql/postgresql "9.2-1003-jdbc4"]
                  [clj-logging-config "1.9.10"]
                  [zip-visit "1.0.2"]
                  [prismatic/plumbing "0.3.5"]

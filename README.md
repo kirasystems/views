@@ -1,6 +1,9 @@
 # views
 
-Eventually consistent external materialized views for SQL databases.
+Eventually consistent external materialized views.
+
+*Notice: despite being 1.x.x, this is incomplete. Version 2.0.0 will be
+ the first release version.*
 
 ## Design
 
@@ -12,28 +15,11 @@ TODO
 
 ## Testing
 
-You will need to set up the test db to run the tests:
-
-```bash
-$ psql -Upostgres < test/views/test_db.sql
-CREATE ROLE
-CREATE DATABASE
-$
-```
-
-This will create a role `views_user` and a database owned by that user called `views_test`.
-
-(You can change the database settings if you'd like by editing that file and checking the config in `test/views/fixtures.clj`.)
-
-Then, to run all tests:
-
-```bash
-$ lein with-profile test test
-```
+TODO
 
 ## License
 
-Copyright © 2014 DiligenceEngine
+Copyright © 2015 DiligenceEngine
 
 Authors Dave Della Costa (https://github.com/ddellacosta) and Alexander Hudek (https://github.com/akhudek)
 
