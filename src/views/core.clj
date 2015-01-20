@@ -1,8 +1,10 @@
 (ns views.core
+  (:import
+    [java.util.concurrent ArrayBlockingQueue TimeUnit])
   (:require
     [views.protocols :refer [IView id data relevant?]]
     [plumbing.core :refer [swap-pair!]]
-    [clojure.tools.logging :refer [debug]]))
+    [clojure.tools.logging :refer [debug error]]))
 
 ;; The view-system data structure has this shape:
 ;;
@@ -18,19 +20,22 @@
 ;;
 ;;  Each hint has the form {:namespace x :hint y}
 
+(def refresh-queue (ArrayBlockingQueue. 500))
+
 (defn subscribe-view!
   [view-system view-sig subscriber-key data-hash]
   (-> view-system
       (update-in [:subscribed subscriber-key] (fnil conj #{}) view-sig)
       (update-in [:subscribers view-sig] (fnil conj #{}) subscriber-key)
-      (assoc-in [:hashes view-sig] data-hash)))
+      (update-in [:hashes view-sig] #(or % data-hash)))) ;; see note #1
 
 (defn subscribe!
   [view-system namespace view-id parameters subscriber-key]
-  (if-let [view  (get-in @view-system [:views view-id])]
-    (let [vdata    (data view namespace parameters)]
-      (swap! view-system subscribe-view! [namespace view-id parameters] subscriber-key (hash vdata))
-      ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata]))))
+  (if-let [view (get-in @view-system [:views view-id])]
+    (future
+      (let [vdata (data view namespace parameters)]
+        (swap! view-system subscribe-view! [namespace view-id parameters] subscriber-key (hash vdata))
+        ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata])))))
 
 (defn remove-from-subscribers
   [view-system view-sig subscriber-key]
@@ -58,12 +63,10 @@
   [view-system hints [namespace view-id parameters :as view-sig]]
   (let [v (get-in @view-system [:views view-id])]
     (if (relevant? v namespace parameters hints)
-      (let [vdata (data v namespace parameters)
-            hdata (hash vdata)]
-        (when-not (= hdata (get-in @view-system [:hashes view-sig]))
-          (doseq [s (get-in @view-system [:subscribers view-sig])]
-            ((:send-fn @view-system) s [[view-id parameters] vdata]))
-          (swap! view-system assoc-in [:hashes view-sig] hdata))))))
+      (if-not (.contains ^ArrayBlockingQueue refresh-queue view-sig)
+        (when-not (.offer ^ArrayBlockingQueue refresh-queue view-sig)
+          (error "refresh-queue full, dropping refresh request for" view-sig))
+        (debug "already queued for refresh" view-sig)))))
 
 (defn subscribed-views
   [view-system]
@@ -91,15 +94,37 @@
   [last-update min-refresh-interval]
   (Thread/sleep (max 0 (- min-refresh-interval (- (System/currentTimeMillis) last-update)))))
 
+(defn worker-thread
+  "Handles refresh requests."
+  [view-system]
+  (fn []
+    (when-let [[namespace view-id parameters :as view-sig] (.poll ^ArrayBlockingQueue refresh-queue 60 TimeUnit/SECONDS)]
+      (try
+        (let [view  (get-in @view-system [:views view-id])
+              vdata (data view namespace parameters)
+              hdata (hash vdata)]
+          (when-not (= hdata (get-in @view-system [:hashes view-sig]))
+            (doseq [s (get-in @view-system [:subscribers view-sig])]
+              ((:send-fn @view-system) s [[view-id parameters] vdata]))
+            (swap! view-system assoc-in [:hashes view-sig] hdata)))
+        (catch Exception e
+          (error "error refreshing:" namespace view-id parameters
+                 "e:" e "msg:" (.getMessage e)))))
+    (recur)))
+
 (defn update-watcher!
   "A single threaded view update mechanism."
-  [view-system min-refresh-interval]
+  [view-system min-refresh-interval threads]
   (swap! view-system assoc :last-update 0)
   (.start (Thread. (fn [] (let [last-update (:last-update @view-system)]
-                            (if (can-refresh? last-update min-refresh-interval)
-                              (refresh-views! view-system)
-                              (wait last-update min-refresh-interval))
-                            (recur))))))
+                            (try
+                              (if (can-refresh? last-update min-refresh-interval)
+                                (refresh-views! view-system)
+                                (wait last-update min-refresh-interval))
+                              (catch Exception e (error "exception in views e:" e  "msg:"(.getMessage e))))
+                            (recur)))))
+  (dotimes [i threads] (.start (Thread. ^Runnable (worker-thread view-system)))))
+
 
 (defn hint
   "Create a hint."
