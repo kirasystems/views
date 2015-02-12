@@ -4,7 +4,8 @@
   (:require
     [views.protocols :refer [IView id data relevant?]]
     [plumbing.core :refer [swap-pair!]]
-    [clojure.tools.logging :refer [debug error]]))
+    [clojure.tools.logging :refer [debug error]]
+    [environ.core :refer [env]]))
 
 ;; The view-system data structure has this shape:
 ;;
@@ -20,7 +21,12 @@
 ;;
 ;;  Each hint has the form {:namespace x :hint y}
 
-(def refresh-queue (ArrayBlockingQueue. 500))
+(def refresh-queue-size
+  (if-let [n (:views-refresh-queue-size env)]
+    (Long/parseLong n)
+    1000))
+
+(def refresh-queue (ArrayBlockingQueue. refresh-queue-size))
 
 (defn subscribe-view!
   [view-system view-sig subscriber-key data-hash]
