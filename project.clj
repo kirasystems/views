@@ -1,4 +1,4 @@
-(defproject views "1.1.0"
+(defproject views "1.2.0"
   :description "A view to the past helps navigate the future."
 
   :url "https://github.com/diligenceengine/views"

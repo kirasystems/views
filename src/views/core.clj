@@ -85,12 +85,13 @@
     (or (:hints (first p)) #{})))
 
 (defn refresh-views!
-  "Given a collection of hints, find all dirty views."
-  [view-system]
-  (let [hints (pop-hints! view-system)]
-    (debug "refresh hints:" hints)
-    (mapv #(refresh-view! view-system hints %) (subscribed-views @view-system))
-    (swap! view-system assoc :last-update (System/currentTimeMillis))))
+  "Given a collection of hints, or a single hint, find all dirty views and schedule them for a refresh."
+  ([view-system hints]
+   (debug "refresh hints:" hints)
+   (mapv #(refresh-view! view-system hints %) (subscribed-views @view-system))
+   (swap! view-system assoc :last-update (System/currentTimeMillis)))
+  ([view-system]
+   (refresh-views! view-system (pop-hints! view-system))))
 
 (defn can-refresh?
   [last-update min-refresh-interval]
