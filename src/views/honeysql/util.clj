@@ -8,6 +8,14 @@
 
 (declare query-tables)
 
+(defn- first-leaf
+  "Retrieves the first leaf in a collection of collections
+
+  (first-leaf :table)                -> :table
+  (first-leaf [[:table] [& values]]) -> :table"
+  [v]
+  (if (coll? v) (recur (first v)) v))
+
 (defn cte-tables
   [query]
   (mapcat #(query-tables (second %)) (:with query)))
@@ -45,7 +53,7 @@
 
 (defn insert-tables
   [query]
-  (if-let [v (:insert-into query)] [v] []))
+  (some->> query :insert-into first-leaf vector))
 
 (defn update-tables
   [query]
