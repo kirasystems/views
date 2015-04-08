@@ -4,7 +4,7 @@
   (:require
     [views.protocols :refer [IView id data relevant?]]
     [plumbing.core :refer [swap-pair!]]
-    [clojure.tools.logging :refer [debug error]]
+    [clojure.tools.logging :refer [info debug error]]
     [environ.core :refer [env]]))
 
 ;; The view-system data structure has this shape:
@@ -25,6 +25,17 @@
   (if-let [n (:views-refresh-queue-size env)]
     (Long/parseLong n)
     1000))
+
+(def statistics (atom {}))
+
+(defn reset-stats!
+  []
+  (swap! statistics (fn [s] {:enabled (boolean (:enabled s)), :refreshes 0, :dropped 0, :deduplicated 0})))
+
+(defn collect-stats? [] (:enabled @statistics))
+
+(reset-stats!)
+
 
 (def refresh-queue (ArrayBlockingQueue. refresh-queue-size))
 
@@ -71,12 +82,20 @@
     (if (relevant? v namespace parameters hints)
       (if-not (.contains ^ArrayBlockingQueue refresh-queue view-sig)
         (when-not (.offer ^ArrayBlockingQueue refresh-queue view-sig)
+          (when (collect-stats?) (swap! statistics update-in [:dropped] inc))
           (error "refresh-queue full, dropping refresh request for" view-sig))
-        (debug "already queued for refresh" view-sig)))))
+        (do
+          (when (collect-stats?) (swap! statistics update-in [:deduplicated] inc))
+          (debug "already queued for refresh" view-sig))))))
 
 (defn subscribed-views
   [view-system]
   (reduce into #{} (vals (:subscribed view-system))))
+
+(defn active-view-count
+  "Returns a count of views with at least one subscriber."
+  [view-system]
+  (count (remove #(empty? (val %)) (:subscribers view-system))))
 
 (defn pop-hints!
   "Return hints and clear hint set atomicly."
@@ -106,6 +125,7 @@
   [view-system]
   (fn []
     (when-let [[namespace view-id parameters :as view-sig] (.poll ^ArrayBlockingQueue refresh-queue 60 TimeUnit/SECONDS)]
+      (when (collect-stats?) (swap! statistics update-in [:refreshes] inc))
       (try
         (let [view  (get-in @view-system [:views view-id])
               vdata (data view namespace parameters)
@@ -132,6 +152,20 @@
                             (recur)))))
   (dotimes [i threads] (.start (Thread. ^Runnable (worker-thread view-system)))))
 
+(defn log-statistics!
+  "Run a thread that logs statistics every msecs."
+  [view-system msecs]
+  (swap! statistics assoc-in [:enabled] true)
+  (let [secs (/ msecs 1000)]
+    (.start (Thread. (fn []
+                       (Thread/sleep msecs)
+                       (let [stats @statistics]
+                         (reset-stats!)
+                         (info "subscribed views:" (active-view-count @view-system)
+                               (format "refreshes/sec: %.1f" (double (/ (:refreshes stats) secs)))
+                               (format "dropped/sec: %.1f" (double (/ (:dropped stats) secs)))
+                               (format "deduped/sec: %.1f" (double (/ (:deduplicated stats) secs))))
+                         (recur)))))))
 
 (defn hint
   "Create a hint."
