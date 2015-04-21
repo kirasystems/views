@@ -1,20 +1,19 @@
-(defproject views "1.3.0"
+(defproject views "1.4.0-SNAPSHOT"
   :description "A view to the past helps navigate the future."
 
-  :url "https://github.com/diligenceengine/views"
+  :url "https://github.com/kirasystems/views"
 
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :license {:name "MIT License"
+            :url "http://opensource.org/licenses/MIT"}
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/tools.logging "0.2.6"]
-                 [honeysql "0.4.3"]
+  :dependencies [[org.clojure/tools.logging "0.3.1"]
                  [clj-logging-config "1.9.10"]
                  [prismatic/plumbing "0.3.5"]
                  [pjstadig/humane-test-output "0.6.0"]
                  [environ "1.0.0"]]
 
-  :profiles {:test {:dependencies [[org.clojure/tools.nrepl "0.2.3"]
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.6.0"]]}
+             :test {:dependencies [[org.clojure/tools.nrepl "0.2.3"]
                                    [environ "1.0.0"]
                                    [org.clojure/data.generators "0.1.2"]]
 
