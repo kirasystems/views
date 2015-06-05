@@ -48,11 +48,15 @@
 
 (defn subscribe!
   [view-system namespace view-id parameters subscriber-key]
-  (if-let [view (get-in @view-system [:views view-id])]
+  (when-let [view (get-in @view-system [:views view-id])]
     (future
-      (let [vdata (data view namespace parameters)]
-        (swap! view-system subscribe-view! [namespace view-id parameters] subscriber-key (hash vdata))
-        ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata])))))
+      (try
+        (let [vdata (data view namespace parameters)]
+          (swap! view-system subscribe-view! [namespace view-id parameters] subscriber-key (hash vdata))
+          ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata]))
+        (catch Exception e
+          (error "error subscribing:" namespace view-id parameters
+                 "e:" e "msg:" (.getMessage e)))))))
 
 (defn remove-from-subscribers
   [view-system view-sig subscriber-key]
