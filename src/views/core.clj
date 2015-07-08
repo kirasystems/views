@@ -79,14 +79,17 @@
   "We refresh a view if it is relevant and its data hash has changed."
   [view-system hints [namespace view-id parameters :as view-sig]]
   (let [v (get-in @view-system [:views view-id])]
-    (if (relevant? v namespace parameters hints)
-      (if-not (.contains ^ArrayBlockingQueue refresh-queue view-sig)
-        (when-not (.offer ^ArrayBlockingQueue refresh-queue view-sig)
-          (when (collect-stats?) (swap! statistics update-in [:dropped] inc))
-          (error "refresh-queue full, dropping refresh request for" view-sig))
-        (do
-          (when (collect-stats?) (swap! statistics update-in [:deduplicated] inc))
-          (debug "already queued for refresh" view-sig))))))
+    (try
+      (if (relevant? v namespace parameters hints)
+        (if-not (.contains ^ArrayBlockingQueue refresh-queue view-sig)
+          (when-not (.offer ^ArrayBlockingQueue refresh-queue view-sig)
+            (when (collect-stats?) (swap! statistics update-in [:dropped] inc))
+            (error "refresh-queue full, dropping refresh request for" view-sig))
+          (do
+            (when (collect-stats?) (swap! statistics update-in [:deduplicated] inc))
+            (debug "already queued for refresh" view-sig))))
+      (catch Exception e (error "error determining if view is relevant, view-id:"
+                                view-id "e:" e)))))
 
 (defn subscribed-views
   [view-system]
