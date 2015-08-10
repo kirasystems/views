@@ -40,23 +40,32 @@
 (def refresh-queue (ArrayBlockingQueue. refresh-queue-size))
 
 (defn subscribe-view!
-  [view-system view-sig subscriber-key data-hash]
+  [view-system view-sig subscriber-key]
   (-> view-system
       (update-in [:subscribed subscriber-key] (fnil conj #{}) view-sig)
-      (update-in [:subscribers view-sig] (fnil conj #{}) subscriber-key)
-      (update-in [:hashes view-sig] #(or % data-hash)))) ;; see note #1
+      (update-in [:subscribers view-sig] (fnil conj #{}) subscriber-key)))
+
+(defn update-hash!
+  [view-system view-sig data-hash]
+  (update-in view-system [:hashes view-sig] #(or % data-hash))) ;; see note #1 in NOTES.md
 
 (defn subscribe!
   [view-system namespace view-id parameters subscriber-key]
   (when-let [view (get-in @view-system [:views view-id])]
-    (future
-      (try
-        (let [vdata (data view namespace parameters)]
-          (swap! view-system subscribe-view! [namespace view-id parameters] subscriber-key (hash vdata))
-          ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata]))
-        (catch Exception e
-          (error "error subscribing:" namespace view-id parameters
-                 "e:" e "msg:" (.getMessage e)))))))
+    (let [view-sig [namespace view-id parameters]]
+      (swap! view-system subscribe-view! view-sig subscriber-key)
+      (future
+        (try
+          (let [vdata     (data view namespace parameters)
+                data-hash (hash vdata)]
+            ;; Check to make sure that we are still subscribed. It's possible that
+            ;; an unsubscription event came in while computing the view.
+            (when (get-in @view-system [:subscribed subscriber-key view-sig])
+              (update-hash! view-system view-sig data-hash)
+              ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata])))
+          (catch Exception e
+            (error "error subscribing:" namespace view-id parameters
+                   "e:" e "msg:" (.getMessage e))))))))
 
 (defn remove-from-subscribers
   [view-system view-sig subscriber-key]
