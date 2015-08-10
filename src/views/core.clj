@@ -60,8 +60,8 @@
                 data-hash (hash vdata)]
             ;; Check to make sure that we are still subscribed. It's possible that
             ;; an unsubscription event came in while computing the view.
-            (when (get-in @view-system [:subscribed subscriber-key view-sig])
-              (update-hash! view-system view-sig data-hash)
+            (when (contains? (get-in @view-system [:subscribed subscriber-key]) view-sig)
+              (swap! view-system update-hash! view-sig data-hash)
               ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata])))
           (catch Exception e
             (error "error subscribing:" namespace view-id parameters
