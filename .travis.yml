@@ -1,6 +1,7 @@
 language: clojure
 deploy:
+  skip_cleanup: true
   provider: script
   script: lein deploy
   on:
-    branch: travis
+    tags: true
