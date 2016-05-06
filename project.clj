@@ -6,6 +6,11 @@
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
 
+  :repositories [["releases" {:url "https://clojars.org/repo"
+                              :sign-releases false
+                              :username :env
+                              :password :env}]]
+
   :dependencies [[org.clojure/tools.logging "0.3.1"]
                  [clj-logging-config "1.9.12"]
                  [prismatic/plumbing "0.4.3"]
