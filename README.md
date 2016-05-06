@@ -1,8 +1,13 @@
 # views
+[![Build Status](https://travis-ci.org/kirasystems/views.svg)](https://travis-ci.org/kirasystems/views)
+[![Dependencies Status](https://jarkeeper.com/kirasystems/views/status.svg)](https://jarkeeper.com/kirasystems/views)
 
 Eventually consistent external materialized views.
 
 *Notice: library is still somewhat in flux.*
+
+[![Clojars Project](http://clojars.org/kirasystems/views/latest-version.svg)](http://clojars.org/kirasystems/views)
+
 
 ## Design
 
