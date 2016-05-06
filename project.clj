@@ -26,4 +26,12 @@
                                  (pjstadig.humane-test-output/activate!)]}}
 
   :plugins [[lein-ancient "0.6.7"]
-            [lein-environ "0.4.0"]])
+            [lein-environ "0.4.0"]]
+
+  :release-tasks [["vcs" "assert-committed"]
+                  ["change" "version" "leiningen.release/bump-version" "release"]
+                  ["vcs" "commit"]
+                  ["vcs" "tag"]
+                  ["change" "version" "leiningen.release/bump-version"]
+                  ["vcs" "commit"]
+                  ["vcs" "push"]])
