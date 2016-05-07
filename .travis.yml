@@ -1,0 +1,14 @@
+language: clojure
+deploy:
+  skip_cleanup: true
+  provider: script
+  script: lein deploy
+  on:
+    tags: true
+notifications:
+  slack:
+    secure: ilNqO2yGeCnunIlbLxjRpktFPugfNILBGyVKKgk3QFAQW2eWKdIR17RhOfN204nRBNTG+LKbAldOOd4tEPfHmSWzx1R/jLsFpfe56FwrtaYA3xKOJkYFnB+jthZb7HbsuTV2umQ3Z5vGB6rdiySAaXYWExchO2IDxa0T4aJfBCk=
+env:
+  global:
+  - secure: c2JzRIJoLh1x6t5khQgdxGEXf5DMtPYeOCr2HifB8UIgBJrpRL7CFURaiZH6cb4k1kAPKjZyE8zC4ZogCK1W3YjHMSPcv/d4MViYh3/Z5mD53EEYyD9msuuxaYL5aqBoHtKgx2DSyClhkBWEkQaHbppEAWmkwIEUcLXZ7uG3KqI=
+  - secure: dCLSYUuRFWVZX6NTQ71Lm2j+gRwi2a0f/8UM4fJP1F6JXpUi9W4imqtJs5a/pxOhui0YrTYX1fPCMJI31k30/crI0a+eeU6ZBvhP4VXNXg7ltc49LPwTX81nCtUc/hGksNYjZXWy3mDEO1u55bC5Qkn7T2HwJYCKBwlU+2+2Rlg=
