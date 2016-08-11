@@ -36,8 +36,15 @@
 
 (reset-stats!)
 
+(defn view-system
+  "Return a new view system."
+  [options]
+  (atom (assoc options :refresh-queue (ArrayBlockingQueue. refresh-queue-size))))
 
-(def refresh-queue (ArrayBlockingQueue. refresh-queue-size))
+(defn poll-queue!
+  "Poll the view system refresh queue returning next refresh. This blocks for 60 seconds."
+  [view-system]
+  (.poll ^ArrayBlockingQueue (:refresh-queue @view-system) 60 TimeUnit/SECONDS))
 
 (defn subscribe-view!
   [view-system view-sig subscriber-key]
@@ -94,8 +101,8 @@
   (let [v (get-in @view-system [:views view-id])]
     (try
       (if (relevant? v namespace parameters hints)
-        (if-not (.contains ^ArrayBlockingQueue refresh-queue view-sig)
-          (when-not (.offer ^ArrayBlockingQueue refresh-queue view-sig)
+        (if-not (.contains ^ArrayBlockingQueue (:refresh-queue @view-system) view-sig)
+          (when-not (.offer ^ArrayBlockingQueue (:refresh-queue @view-system) view-sig)
             (when (collect-stats?) (swap! statistics update-in [:dropped] inc))
             (error "refresh-queue full, dropping refresh request for" view-sig))
           (do
@@ -136,11 +143,12 @@
   [last-update min-refresh-interval]
   (Thread/sleep (max 0 (- min-refresh-interval (- (System/currentTimeMillis) last-update)))))
 
+
 (defn worker-thread
   "Handles refresh requests."
   [view-system]
   (fn []
-    (when-let [[namespace view-id parameters :as view-sig] (.poll ^ArrayBlockingQueue refresh-queue 60 TimeUnit/SECONDS)]
+    (when-let [[namespace view-id parameters :as view-sig] (poll-queue! view-system)]
       (when (collect-stats?) (swap! statistics update-in [:refreshes] inc))
       (try
         (let [view  (get-in @view-system [:views view-id])
