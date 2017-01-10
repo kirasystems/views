@@ -23,7 +23,7 @@ TODO
 
 ## License
 
-Copyright © 2015-2016 Kira Inc.
+Copyright © 2015-2017 Kira Inc.
 
 Authors Dave Della Costa (https://github.com/ddellacosta) and Alexander Hudek (https://github.com/akhudek)
 
