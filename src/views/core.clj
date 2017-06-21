@@ -2,10 +2,11 @@
   (:import
     [java.util.concurrent ArrayBlockingQueue TimeUnit])
   (:require
-    [views.protocols :refer [IView id data relevant?]]
-    [plumbing.core :refer [swap-pair!]]
     [clojure.tools.logging :refer [info debug error]]
-    [environ.core :refer [env]]))
+    [environ.core :refer [env]]
+    [plumbing.core :refer [swap-pair!]]
+    [views.hash :refer [hash]]
+    [views.protocols :refer [IView id data relevant?]]))
 
 ;; The view-system data structure has this shape:
 ;;
