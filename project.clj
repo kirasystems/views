@@ -11,11 +11,12 @@
                               :username :env
                               :password :env}]]
 
-  :dependencies [[org.clojure/tools.logging "0.3.1"]
-                 [clj-logging-config "1.9.12"]
-                 [prismatic/plumbing "0.5.3"]
+  :dependencies [[clj-logging-config "1.9.12"]
+                 [environ "1.0.3"]
+                 [io.replikativ/hasch "0.3.4"]
+                 [org.clojure/tools.logging "0.3.1"]
                  [pjstadig/humane-test-output "0.8.0"]
-                 [environ "1.0.3"]]
+                 [prismatic/plumbing "0.5.3"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :test {:dependencies [[org.clojure/tools.nrepl "0.2.12"]

@@ -2,10 +2,11 @@
   (:import
     [java.util.concurrent ArrayBlockingQueue TimeUnit])
   (:require
-    [views.protocols :refer [IView id data relevant?]]
-    [plumbing.core :refer [swap-pair!]]
     [clojure.tools.logging :refer [info debug error]]
-    [environ.core :refer [env]]))
+    [environ.core :refer [env]]
+    [plumbing.core :refer [swap-pair!]]
+    [views.hash :refer [md5-hash]]
+    [views.protocols :refer [IView id data relevant?]]))
 
 ;; The view-system data structure has this shape:
 ;;
@@ -64,7 +65,7 @@
       (future
         (try
           (let [vdata     (data view namespace parameters)
-                data-hash (hash vdata)]
+                data-hash (md5-hash vdata)]
             ;; Check to make sure that we are still subscribed. It's possible that
             ;; an unsubscription event came in while computing the view.
             (when (contains? (get-in @view-system [:subscribed subscriber-key]) view-sig)
@@ -155,7 +156,7 @@
       (try
         (let [view  (get-in @view-system [:views view-id])
               vdata (data view namespace parameters)
-              hdata (hash vdata)]
+              hdata (md5-hash vdata)]
           (when-not (= hdata (get-in @view-system [:hashes view-sig]))
             (doseq [s (get-in @view-system [:subscribers view-sig])]
               ((:send-fn @view-system) s [[view-id parameters] vdata]))
