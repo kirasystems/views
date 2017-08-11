@@ -158,7 +158,8 @@
            (let [view-sigs (get-in vs [:subscribed subscriber-key])]
              (as-> (update vs :subscribed dissoc subscriber-key) vs*
                    (reduce #(remove-from-subscribers %1 %2 subscriber-key) vs* view-sigs)
-                   (reduce #(assoc-hash %1 %2 nil) vs* view-sigs)))))  ;; see note #2 in NOTES.md
+                   (reduce #(assoc-hash %1 %2 nil) vs* view-sigs) ;; see note #2 in NOTES.md
+                   (reduce #(clean-up-unneeded-hashes %1 %2) vs* view-sigs)))))
   view-system)
 
 (defn refresh-view!
