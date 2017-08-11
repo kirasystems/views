@@ -47,13 +47,13 @@
   [view-system]
   (.poll ^ArrayBlockingQueue (:refresh-queue @view-system) 60 TimeUnit/SECONDS))
 
-(defn subscribe-view!
+(defn subscribe-view
   [view-system view-sig subscriber-key]
   (-> view-system
       (update-in [:subscribed subscriber-key] (fnil conj #{}) view-sig)
       (update-in [:subscribers view-sig] (fnil conj #{}) subscriber-key)))
 
-(defn update-hash!
+(defn update-hash
   [view-system view-sig data-hash]
   (assoc-in view-system [:hashes view-sig] data-hash))
 
@@ -61,7 +61,7 @@
   [view-system namespace view-id parameters subscriber-key]
   (when-let [view (get-in @view-system [:views view-id])]
     (let [view-sig [namespace view-id parameters]]
-      (swap! view-system subscribe-view! view-sig subscriber-key)
+      (swap! view-system subscribe-view view-sig subscriber-key)
       (future
         (try
           (let [vdata     (data view namespace parameters)
@@ -69,7 +69,7 @@
             ;; Check to make sure that we are still subscribed. It's possible that
             ;; an unsubscription event came in while computing the view.
             (when (contains? (get-in @view-system [:subscribed subscriber-key]) view-sig)
-              (swap! view-system update-hash! view-sig #(or (get-in view-system [:hashes view-sig]) data-hash)) ;; see note #1 in NOTES.md
+              (swap! view-system update-in [:hashes view-sig] #(or % data-hash)) ;; see note #1 in NOTES.md
               ((get @view-system :send-fn) subscriber-key [[view-id parameters] vdata])))
           (catch Exception e
             (error "error subscribing:" namespace view-id parameters
@@ -86,7 +86,7 @@
            (-> vs
                (update-in [:subscribed subscriber-key] disj [namespace view-id parameters])
                (remove-from-subscribers [namespace view-id parameters] subscriber-key)
-               (update-hash! [namespace view-id parameters] nil))))) ;; see note #2 in NOTES.md
+               (update-hash [namespace view-id parameters] nil))))) ;; see note #2 in NOTES.md
 
 (defn unsubscribe-all!
   "Remove all subscriptions by a given subscriber."
@@ -96,7 +96,7 @@
            (let [view-sigs (get-in vs [:subscribed subscriber-key])]
              (as-> (update-in vs [:subscribed] dissoc subscriber-key) vs*
                    (reduce #(remove-from-subscribers %1 %2 subscriber-key) vs* view-sigs)
-                   (reduce #(update-hash! %1 %2 nil) vs* view-sigs)))))) ;; see note #2 in NOTES.md
+                   (reduce #(update-hash %1 %2 nil) vs* view-sigs)))))) ;; see note #2 in NOTES.md
 
 (defn refresh-view!
   "We refresh a view if it is relevant and its data hash has changed."
@@ -160,7 +160,7 @@
           (when-not (= hdata (get-in @view-system [:hashes view-sig]))
             (doseq [s (get-in @view-system [:subscribers view-sig])]
               ((:send-fn @view-system) s [[view-id parameters] vdata]))
-            (swap! view-system update-hash! view-sig hdata)))
+            (swap! view-system update-hash view-sig hdata)))
         (catch Exception e
           (error "error refreshing:" namespace view-id parameters
                  "e:" e "msg:" (.getMessage e)))))
