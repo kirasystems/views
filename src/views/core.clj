@@ -22,13 +22,13 @@
   [view-system]
   (.poll ^ArrayBlockingQueue (:refresh-queue @view-system) 60 TimeUnit/SECONDS))
 
-(defn subscribe-view!
+(defn subscribe-view
   [view-system view-sig subscriber-key]
   (-> view-system
       (update-in [:subscribed subscriber-key] (fnil conj #{}) view-sig)
       (update-in [:subscribers view-sig] (fnil conj #{}) subscriber-key)))
 
-(defn assoc-hash!
+(defn assoc-hash
   "Set the hash for a view-sig to the given value."
   [view-system view-sig data-hash]
   (assoc-in view-system [:hashes view-sig] data-hash))
@@ -66,7 +66,7 @@
 
 (defn- subscribe-and-send!
   [view-system view view-sig subscriber-key]
-  (swap! view-system subscribe-view! view-sig subscriber-key)
+  (swap! view-system subscribe-view view-sig subscriber-key)
   (future
     (try
       (let [vdata     (data view (:namespace view-sig) (:parameters view-sig))
@@ -145,7 +145,7 @@
              (-> vs
                  (remove-from-subscribed view-sig subscriber-key)
                  (remove-from-subscribers view-sig subscriber-key)
-                 (assoc-hash! view-sig nil) ;; see note #2 in NOTES.md
+                 (assoc-hash view-sig nil) ;; see note #2 in NOTES.md
                  (clean-up-unneeded-hashes view-sig)))))
   view-system)
 
@@ -158,7 +158,7 @@
            (let [view-sigs (get-in vs [:subscribed subscriber-key])]
              (as-> (update vs :subscribed dissoc subscriber-key) vs*
                    (reduce #(remove-from-subscribers %1 %2 subscriber-key) vs* view-sigs)
-                   (reduce #(assoc-hash! %1 %2 nil) vs* view-sigs)))))  ;; see note #2 in NOTES.md
+                   (reduce #(assoc-hash %1 %2 nil) vs* view-sigs)))))  ;; see note #2 in NOTES.md
   view-system)
 
 (defn refresh-view!
