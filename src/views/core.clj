@@ -410,7 +410,7 @@
    system can be provided, otherwise one will be created. Either way,
    the atom with the initialized view system is returned.
 
-   options is a map of options to configure the view system with. See
+   Options is a map of options to configure the view system with. See
    views.core/default-options for a description of the available options
    and the defaults that will be used for any options not provided in
    the call to init!."
