@@ -1,6 +1,6 @@
 (ns views.statistics
   (:require
-    [clojure.tools.logging :refer [info error trace]]))
+    [clojure.tools.logging :refer [info error debug]]))
 
 (defn active-view-count
   "Returns a count of views with at least one subscriber."
@@ -56,7 +56,7 @@
   "Starts a logger thread that will enable collection of view statistics
    which the logger will periodically write out to the log."
   [view-system log-interval]
-  (trace "starting logger. logging at" log-interval "secs intervals")
+  (debug "starting logger. logging at" log-interval "secs intervals")
   (if (get-in @view-system [:statistics :logger])
     (error "cannot start new logger thread until existing thread is stopped")
     (let [logger (Thread. ^Runnable (logger-thread view-system log-interval))]
@@ -71,7 +71,7 @@
 (defn stop-logger!
   "Stops the logger thread."
   [view-system & [dont-wait-for-thread?]]
-  (trace "stopping logger")
+  (debug "stopping logger")
   (let [^Thread logger-thread (get-in @view-system [:statistics :logger])]
     (swap! view-system assoc-in [:statistics :stop?] true)
     (if logger-thread (.interrupt logger-thread))

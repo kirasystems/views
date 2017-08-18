@@ -2,7 +2,7 @@
   (:import
     [java.util.concurrent ArrayBlockingQueue TimeUnit])
   (:require
-    [clojure.tools.logging :refer [info warn debug error trace]]
+    [clojure.tools.logging :refer [debug error]]
     [environ.core :refer [env]]
     [views.hash :refer [md5-hash]]
     [views.protocols :refer [IView id data relevant?]]
@@ -93,7 +93,7 @@
       (if (authorized-subscription? @view-system view-sig subscriber-key context)
         (subscribe-and-send! view-system view view-sig subscriber-key)
         (do
-          (trace "subscription not authorized" view-sig subscriber-key context)
+          (debug "subscription not authorized" view-sig subscriber-key context)
           (on-unauthorized-subscription @view-system view-sig subscriber-key context)
           nil)))
     (throw (new Exception (str "Subscription for non-existant view: " view-id)))))
@@ -137,7 +137,7 @@
    identified by subscriber-key. Additional context info can be passed in,
    which will be passed to the view-system's namespace-fn (if provided)."
   [view-system {:keys [view-id parameters] :as view-sig} subscriber-key context]
-  (trace "unsubscribing from view" view-sig subscriber-key)
+  (debug "unsubscribing from view" view-sig subscriber-key)
   (swap! view-system
          (fn [vs]
            (let [namespace (view-namespace vs view-sig subscriber-key context)
@@ -152,7 +152,7 @@
 (defn unsubscribe-all!
   "Remove all subscriptions by a given subscriber."
   [view-system subscriber-key]
-  (trace "unsubscribing from all views" subscriber-key)
+  (debug "unsubscribing from all views" subscriber-key)
   (swap! view-system
          (fn [vs]
            (let [view-sigs (get-in vs [:subscribed subscriber-key])]
@@ -177,7 +177,7 @@
           (do
             (when (statistics/collecting? view-system)
               (statistics/deduplicated! view-system))
-            (trace "already queued for refresh" view-sig))))
+            (debug "already queued for refresh" view-sig))))
       (catch Exception e
         (error "error determining if view is relevant, view-id:" view-id "e:" e))))
   view-system)
@@ -200,7 +200,7 @@
   "Given a collection of hints, or a single hint, find all dirty views and schedule them for a refresh."
   ([view-system hints]
    (when (seq hints)
-     (trace "refresh hints:" hints)
+     (debug "refresh hints:" hints)
      (doseq [view-sig (subscribed-views view-system)]
        (refresh-view! view-system hints view-sig)))
    (swap! view-system assoc :last-update (System/currentTimeMillis)))
@@ -237,12 +237,12 @@
   (fn []
     (try
       (when-let [view-sig (poll-queue! view-system)]
-        (trace "worker running refresh for" view-sig)
+        (debug "worker running refresh for" view-sig)
         (do-view-refresh! view-system view-sig))
       (catch InterruptedException e))
     (if-not (:stop-workers? @view-system)
       (recur)
-      (trace "exiting worker thread"))))
+      (debug "exiting worker thread"))))
 
 (defn- refresh-watcher-thread
   [view-system min-refresh-interval]
@@ -257,13 +257,13 @@
           (error "exception in views e:" e  "msg:"(.getMessage e))))
       (if-not (:stop-refresh-watcher? @view-system)
         (recur)
-        (trace "exiting refresh watcher thread")))))
+        (debug "exiting refresh watcher thread")))))
 
 (defn start-update-watcher!
   "Starts threads for the views refresh watcher and worker threads that handle queued
    hints and view refresh requests."
   [view-system min-refresh-interval threads]
-  (trace "starting refresh watcher at" min-refresh-interval "ms interval and" threads "workers")
+  (debug "starting refresh watcher at" min-refresh-interval "ms interval and" threads "workers")
   (if (and (:refresh-watcher @view-system)
            (:workers @view-system))
     (error "cannot start new watcher and worker threads until existing threads are stopped")
@@ -284,7 +284,7 @@
 (defn stop-update-watcher!
   "Stops threads for the views refresh watcher and worker threads."
   [view-system & [dont-wait-for-threads?]]
-  (trace "stopping refresh watcher and workers")
+  (debug "stopping refresh watcher and workers")
   (let [worker-threads (:workers @view-system)
         watcher-thread (:refresh-watcher @view-system)
         threads        (->> worker-threads
@@ -313,7 +313,7 @@
    watcher and dispatched to the workers resulting in view updates being sent out
    for the relevant views/subscribers."
   [view-system hints]
-  (trace "queueing hints" hints)
+  (debug "queueing hints" hints)
   (swap! view-system update :hints (fnil into #{}) hints)
   view-system)
 
@@ -416,7 +416,7 @@
    the call to init!."
   ([view-system options]
    (let [options (merge default-options options)]
-     (trace "initializing views system using options:" options)
+     (debug "initializing views system using options:" options)
      (reset! view-system
              {:refresh-queue (ArrayBlockingQueue. (:refresh-queue-size options))
               :views         (into {} (id-view-pairs (:views options)))
@@ -440,7 +440,7 @@
   "Shuts the view system down, terminating all worker threads and clearing
    all view subscriptions and data."
   [view-system & [dont-wait-for-threads?]]
-  (trace "shutting down views sytem")
+  (debug "shutting down views sytem")
   (stop-update-watcher! view-system dont-wait-for-threads?)
   (if (:logging? @view-system)
     (statistics/stop-logger! view-system dont-wait-for-threads?))
