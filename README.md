@@ -55,9 +55,10 @@ A **hint** is a map of the form:
 
 `:type` represents the type of view (e.g. `:sql-table-name`) and is 
 defined by the view implementation that this hint is intended for. 
-`:hint` is the actual hint information itself and it's contents will 
-differ depending on the type of view it is intended for. As an example,
-for a SQL view it may be a list of database table names. 
+`:hint` is the hint information and its contents will differ depending
+on the type of view it's intended for. As an example, it may be a list
+of database table names for an SQL-based view.
+
 
 **Namespaces** can be used to isolate multiple sets of the same type of
 data being represented by the views within the view system. As an 
@@ -67,14 +68,14 @@ databases. A view is not specifically tied to a namespace, however the
 hints processed by the view system are only relevant for the namespace 
 specified in the hint.
 
-When a view's `relevant?` check is determining if any given hint is 
-relevant or not, it will compare all the properties of a hint, 
-including the namespace and type to ensure that view refreshes aren't 
-issued incorrectly or too frequently.
+Int determining the relevance of any given hint, a view's `relevant?` 
+predicate will compare all the properties of a hint, including the 
+namespace and type to ensure that view refreshes aren't issued
+incorrectly or too frequently.
 
 **Subscribers** can be registered within the view system. A 
 subscription can be created within the view system by specifying the 
-view to subscribe to, identified by it's view ID, and also a namespace 
+view to subscribe to, identified by its view ID, a namespace, 
 and any parameters that the view might take. These 3 properties go 
 together to form a **view signature** or **view sig**. A view sig is 
 represented by a map:
@@ -86,13 +87,13 @@ represented by a map:
 ```
 
 Subscriptions are considered unique for a subscriber based on all 3 of
-these properties combined. As such a subscriber can have multiple 
+these properties combined. As such, a subscriber can have multiple 
 concurrent subscriptions to the same view if the namespace and/or 
 parameters are different for all of them.
 
-A subscriber is uniquely identified by it's **subscriber key**. Common
-subscriber key values include user ID's, Session ID's, or other 
-identifiers like client ID's used in libraries like Sente for websocket
+A subscriber is uniquely identified by its **subscriber key**. Common
+subscriber key values include user ID, Session ID, or other 
+identifiers like client ID used in libraries such as Sente for websocket
 connections.
 
 When hints are processed by the view system and found to be relevant 
@@ -101,7 +102,7 @@ mentioned earlier), **view refreshes** are sent out to all of the
 subscribers of the view. Up-to-date data for the view is retrieved via 
 the view's `data` function and then sent out.
 
-Whenever data is refreshed a hash is kept and is compared to on each 
+Whenever data is refreshed, a hash is kept and is compared to on each 
 refresh to make sure that we don't send out another refresh if the data
 is unchanged from the last refresh sent.
 
@@ -129,10 +130,10 @@ state.
 (def view-system (atom {}))
 ```
 
-For a fully working view system, we need to also provide a function
+For a fully working view system, we also need to provide a function
 that will be used to send view refreshes to subscribers. For now we'll 
 just print view refreshes out in the REPL, but in a real system you'd
-probably want this to send them to a connected Websocket client, or out
+want it to send them to a connected Websocket client, or out
 over some kind of distributed messaging service, etc.
 
 ```clj
@@ -141,7 +142,7 @@ over some kind of distributed messaging service, etc.
   (println "view refresh" subscriber-key view-sig view-data))
 ```
 
-Now we're ready to actually create the view syem. To do this we call 
+Now we're ready to actually create the view system. To do this, we call 
 `init!` which takes a set of options. We provide our send function 
 above using the `:send-fn` option. For a description of all the options
 available, see `views.core/default-options`.
@@ -159,7 +160,7 @@ dispatched to one or more *refresh worker* threads which actually
 perform the work of retrieving updated view data and sending it off to
 subscribers.
 
-But now we need to talk about setting up some views, as we have none in
+Now, let's talk about setting up some views, as we have none in
 our view system.
 
 ### Adding Views
@@ -214,7 +215,7 @@ Note that with this method of referencing data within
 namespaces.
 
 `relevant?` simply compares all 3 values of each of the hints passed in
-to make sure they all match. `memory-view-hint-type` is, as it's name
+to make sure they all match. `memory-view-hint-type` is, as its name
 implies, a value that is used to identify hints as being those intended
 for memory views and not for, e.g. SQL views (if we had a view system 
 with multiple different types of views in it). The function returns 
@@ -239,13 +240,12 @@ namespace in any created hints.
 
 > Most applications will probably want to just pass in a list of views
 > via `views.core/init!` through the `:views` option. However, there is
-> nothing wrong with using `add-views!` like this if you prefer or if 
-> you simply need to change views on the fly.
+> nothing wrong with using `add-views!` like this if you prefer, or if 
+> you need to change views on the fly.
 > 
 > Keep in mind though that adding views via `add-views!` will replace 
-> existing views in the view system with the same ID. Take care when 
-> doing this if there is the possibility that there are existing 
-> subscribers to views that are being replaced!
+> existing views in the view system with the same ID. We only
+> recommend doing this during development.
 
 ### Subscribing to Views
 
@@ -350,18 +350,17 @@ etc). If the worker threads are able to process refresh requests very
 quickly, then the internal queue will usually be empty or near-empty 
 and some or all duplicate refresh requests might make it through.
 
-Also keep in mind that hashes of view data are computed and then 
-compared each time a view refresh is about to be sent out, and while 
-the underlying view data must still be retrieved to compute this hash 
-each time a refresh request is processed, a view refresh will not 
-actually be sent out to the subscribers if the data is found to be 
-unchanged since the last refresh.
+Also, keep in mind that hashes of view data are computed and 
+compared each time a view refresh is about to be sent out. While 
+the underlying view data must still be retrieved on each refresh
+request, the data will not be sent out to subscribers if the hash
+of the new data matches the stored hash.
 
-Ultimately there isn't really a right or wrong answer as to which 
-method you choose. Generally speaking it will usually make the most 
-sense to default to option 2 for most actions that need to add hints to
-the view system. This will generally result in a more responsive 
-system. But you'll want to continually evaluate whether some actions 
+Ultimately, there isn't really a right or wrong answer as to which 
+method you choose. It will usually make the most sense to default 
+to option 2 for most actions that need to add hints to the view 
+system. This will generally result in a more responsive system. 
+But you'll want to continually evaluate whether some actions 
 should possibly be switched over to queue up hints instead.
 
 #### Option 1: Queueing Hints
@@ -704,7 +703,7 @@ set to in the options passed to `views.core/init!`. The default
 can easily provide an alternative function that sends the hints to a
 messaging service.
 
-Then your application nodes need to listen for hints being received
+Then, your application nodes need to listen for hints being received
 from the messaging service. You should then call `queue-hints!` or
 `refresh-views!` with the hints received this way.
 

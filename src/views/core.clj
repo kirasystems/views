@@ -126,7 +126,7 @@
                   subscribed)))))
 
 (defn- clean-up-unneeded-hashes
-  "Remove hashes for view-sigs which do not have any unsubscribers."
+  "Remove hashes for view-sigs which do not have any subscribers."
   [view-system view-sig]
   (if-not (get (:subscribers view-system) view-sig)
     (update view-system :hashes dissoc view-sig)
