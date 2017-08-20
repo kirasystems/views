@@ -41,7 +41,7 @@ A view is represented by the protocol `views.protocols/IView`:
 
 `id` simply returns a unique identifier for this view. `data` returns a
 copy of the underlying data represented by this view. `relevant?` 
-determines if a collection of hints are relevant to the view and is 
+determines if a collection of hints is relevant to the view and is 
 called by the view system whenever new hints are received to determine 
 if view refreshes need to be sent out for this view.
 
