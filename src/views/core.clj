@@ -430,7 +430,7 @@
               ; to make use of any options themselves
               :options       options})
      (start-update-watcher! view-system (:refresh-interval options) (:worker-threads options))
-     (when-let [stats-log-interval (:stats-log-interval options)]
+     (when-let [stats-log-interval (some-> (:stats-log-interval options) pos?)]
        (statistics/start-logger! view-system stats-log-interval))
      view-system))
   ([options]
