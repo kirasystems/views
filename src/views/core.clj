@@ -415,7 +415,8 @@
    and the defaults that will be used for any options not provided in
    the call to init!."
   ([view-system options]
-   (let [options (merge default-options options)]
+   (let [options (merge default-options options)
+         stats-log-interval (:stats-log-interval options)]
      (debug "initializing views system using options:" options)
      (reset! view-system
              {:refresh-queue (ArrayBlockingQueue. (:refresh-queue-size options))
@@ -430,7 +431,7 @@
               ; to make use of any options themselves
               :options       options})
      (start-update-watcher! view-system (:refresh-interval options) (:worker-threads options))
-     (when-let [stats-log-interval (some-> (:stats-log-interval options) pos?)]
+     (when (some-> stats-log-interval pos?)
        (statistics/start-logger! view-system stats-log-interval))
      view-system))
   ([options]
