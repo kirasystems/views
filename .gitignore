@@ -12,6 +12,3 @@ pom.xml.asc
 .idea
 .DS_Store
 *.iml
-examples/**/target
-examples/**/.nrepl-port
-examples/**/.lein-*
