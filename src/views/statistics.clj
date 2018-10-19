@@ -5,7 +5,7 @@
 (defn active-view-count
   "Returns a count of views with at least one subscriber."
   [view-system]
-  (count (remove #(empty? (val %)) (:subscribers view-system))))
+  (count (remove #(empty? (val %)) (:subscribers @view-system))))
 
 (defn collecting?
   "Whether view statem statistics collection and logging is enabled or not."
