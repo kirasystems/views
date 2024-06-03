@@ -9,6 +9,10 @@
   (-coerce [this md-create-fn write-handlers]
     (encode (:number magics) (.getBytes (.toString this) "UTF-8")))
 
+  clojure.lang.Ratio
+  (-coerce [this md-create-fn write-handlers]
+    (encode (:number magics) (.getBytes (.toString this) "UTF-8")))
+
   clojure.lang.BigInt
   (-coerce [this md-create-fn write-handlers]
     (encode (:number magics) (.getBytes (.toString this) "UTF-8"))))
