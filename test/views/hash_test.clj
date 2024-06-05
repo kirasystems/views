@@ -8,6 +8,7 @@
     (are [x y]
       (= (md5-hash x) (md5-hash y))
       1 1
+      1/3 2/6   
       0.5 0.5
       1N 1N
       1M 1M
@@ -21,6 +22,7 @@
     (are [x y]
       (not= (md5-hash x) (md5-hash y))
       1 0
+      1/3 2/6   
       1 1.0
       true false
       "test string" "string"
