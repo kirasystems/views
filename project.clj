@@ -1,4 +1,4 @@
-(defproject kirasystems/views "2.0.3-SNAPSHOT"
+(defproject kirasystems/views "2.0.3"
   :description   "A view to the past helps navigate the future."
   :url           "https://github.com/kirasystems/views"
 
