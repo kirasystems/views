@@ -12,6 +12,7 @@
       1N 1N
       1M 1M
       1N 1M
+      1/3 2/6   
       true true
       "test string" "test string"
       [0 1 2 3] [0 1 2 3]
@@ -22,6 +23,7 @@
       (not= (md5-hash x) (md5-hash y))
       1 0
       1 1.0
+      1/3 2/3
       true false
       "test string" "string"
       [0 1 2 3] [2 3]
